@@ -1,0 +1,116 @@
+import { describe, expect, it } from "vitest";
+import { emit, parseModels, findModel } from "./common.js";
+import { OptionsFile } from "../src/options.js";
+
+describe("Integration tests", () => {
+  it("should rename first then combine models", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model OriginalFoo {
+        id: string;
+        name: string;
+      }
+
+      model OriginalBar {
+        id: string;
+        value: int32;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel"], // After transformation, only CombinedModel will exist
+        },
+      },
+      renames: {
+        OriginalFoo: "Foo",
+        OriginalBar: "Bar",
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["OriginalFoo", "OriginalBar"], // Use original names as sources
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+
+    const models = parseModels(modelsOutput);
+
+    // Should have exactly 1 model: CombinedModel (original models renamed then combined)
+    expect(models).toHaveLength(1);
+
+    const combinedModel = findModel(models, "CombinedModel");
+    expect(combinedModel).toBeDefined();
+    expect(combinedModel!.properties).toEqual({
+      id: { optional: false, type: "string" },
+      name: { optional: false, type: "string" },
+      value: { optional: false, type: "int32" },
+    });
+  });
+
+  it("should combine first then rename the result", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model Foo {
+        id: string;
+        name: string;
+      }
+
+      model Bar {
+        id: string;
+        value: int32;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel"],
+        },
+      },
+      renames: {
+        CombinedModel: "FinalModel", // Rename the combined model
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["Foo", "Bar"],
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+
+    const models = parseModels(modelsOutput);
+
+    // Should have exactly 1 model with the final renamed name: FinalModel
+    expect(models).toHaveLength(1);
+
+    const finalModel = findModel(models, "FinalModel");
+    expect(finalModel).toBeDefined();
+    expect(finalModel!.properties).toEqual({
+      id: { optional: false, type: "string" },
+      name: { optional: false, type: "string" },
+      value: { optional: false, type: "int32" },
+    });
+
+    // CombinedModel should not exist (it was renamed)
+    const combinedModel = findModel(models, "CombinedModel");
+    expect(combinedModel).toBeUndefined();
+  });
+});

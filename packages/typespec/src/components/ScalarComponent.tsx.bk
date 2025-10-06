@@ -1,0 +1,38 @@
+import { Scalar } from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { getDecorators } from "./scopes/util.js";
+import { NameComponent } from "./NameComponent.jsx";
+import { For, Show } from "@alloy-js/core";
+import { Documentation } from "./Documentation.jsx";
+import { DecoratorComponent } from "./DecoratorComponent.jsx";
+
+export interface ScalarProps {
+  scalar: Scalar;
+}
+
+export function ScalarComponent({ scalar }: ScalarProps) {
+  const { $ } = useTsp();
+  const doc = $.type.getDoc(scalar);
+  const name = scalar.name;
+  const decorators = getDecorators(scalar);
+
+  if (scalar.baseScalar === undefined) {
+    throw new Error(`Scalar ${name} has no base scalar`);
+  }
+
+  const baseName = scalar.baseScalar.name;
+
+  return (
+    <>
+      <Show when={Boolean(doc)}>
+        <Documentation doc={doc!} />
+        <hbr />
+      </Show>
+      <For each={decorators} hardline ender={<hbr />}>
+        {(decorator) => <DecoratorComponent decorator={decorator} />}
+      </For>
+      scalar <NameComponent name={name} /> extends{" "}
+      <NameComponent name={baseName} />;
+    </>
+  );
+}

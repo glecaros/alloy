@@ -1,0 +1,37 @@
+import { For, Show } from "@alloy-js/core";
+import { Operation } from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { ModelPropertyComponent, ModelPropertyType } from "./ModelProperty.jsx";
+import { Documentation } from "./Documentation.jsx";
+import { DecoratorComponent } from "./DecoratorComponent.jsx";
+import { getDecorators } from "./scopes/util.js";
+import { NameComponent } from "./NameComponent.jsx";
+
+export interface OperationProps {
+  operation: Operation;
+}
+
+export function OperationComponent({ operation }: OperationProps) {
+  const { $ } = useTsp();
+  const name = operation.name;
+  const doc = $.type.getDoc(operation);
+  const parameters = operation.parameters.properties.values();
+  const returnType = operation.returnType;
+  const decorators = getDecorators(operation);
+  return (
+    <>
+      <Show when={Boolean(doc)}>
+        <Documentation doc={doc!} />
+        <hbr />
+      </Show>
+      <For each={decorators} hardline ender={<hbr />}>
+        {(decorator) => <DecoratorComponent decorator={decorator} />}
+      </For>
+      op <NameComponent name={name} />(
+      <For each={parameters} joiner=", ">
+        {(param) => <ModelPropertyComponent property={param} />}
+      </For>
+      ): <ModelPropertyType type={returnType} />;
+    </>
+  );
+}

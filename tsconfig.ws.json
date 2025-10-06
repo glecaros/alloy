@@ -4,6 +4,7 @@
     { "path": "packages/core" },
     { "path": "packages/typescript" },
     { "path": "packages/java" },
+    { "path": "packages/typespec" },
     { "path": "samples/client-emitter" },
     { "path": "samples/basic-project" }
   ]

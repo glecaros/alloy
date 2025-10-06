@@ -1,0 +1,7 @@
+export interface UsingProps {
+  namespace: string;
+}
+
+export function UsingComponent({ namespace }: UsingProps) {
+  return <>using {namespace};</>;
+}

@@ -1,0 +1,181 @@
+import {
+  DecoratedType,
+  Decorator,
+  DecoratorApplication,
+  Enum,
+  Model,
+  Scalar,
+  Union,
+} from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { getNamespaceString } from "../../render/utils.js";
+import {
+  BasicScope,
+  BasicSymbol,
+  memo,
+  OutputSpace,
+  OutputSymbol,
+  OutputSymbolOptions,
+  Refkey,
+  refkey,
+  ResolutionResult,
+  resolve,
+  useScope,
+} from "@alloy-js/core";
+import { FileScope } from "./file-scope.js";
+import { ModuleScope } from "./module-scope.js";
+
+export type SymbolGeneratingType = Model | Enum | Scalar | Union;
+
+interface TSPOutputSymbolOptions extends OutputSymbolOptions {
+  external?: boolean;
+  using?: string;
+  import?: string;
+}
+
+class TSPOutputSymbol extends BasicSymbol {
+  #external: boolean;
+  #using?: string;
+  #import?: string;
+
+  constructor(
+    name: string,
+    spaces: OutputSpace[] | OutputSpace | undefined,
+    options?: TSPOutputSymbolOptions | undefined,
+  ) {
+    super(name, spaces, options);
+    this.#external = options?.external ?? false;
+    this.#using = options?.using;
+    this.#import = options?.import;
+  }
+
+  copy() {
+    const options = this.getCopyOptions();
+    const copiedSymbol = new TSPOutputSymbol(this.name, undefined, {
+      ...options,
+      external: this.#external,
+      using: this.#using,
+      import: this.#import,
+    });
+    this.initializeCopy(copiedSymbol);
+
+    return copiedSymbol;
+  }
+
+  get external(): boolean {
+    return this.#external;
+  }
+
+  get using(): string | undefined {
+    return this.#using;
+  }
+
+  get import(): string | undefined {
+    return this.#import;
+  }
+}
+
+export function isSymbolGeneratingType(
+  type: any,
+): type is SymbolGeneratingType {
+  const { $ } = useTsp();
+  return (
+    $.model.is(type) || $.enum.is(type) || $.scalar.is(type) || $.union.is(type)
+  );
+}
+
+export function createRefkey(type: SymbolGeneratingType | Decorator): Refkey {
+  const { $ } = useTsp();
+  const scope = useScope() as FileScope;
+  const ns = getNamespaceString(type);
+  if (scope.namespace !== type.namespace) {
+    return refkey(ns);
+  } else if (isSymbolGeneratingType(type)) {
+    const name = $.type.getPlausibleName(type);
+    return refkey(name, ns);
+  }
+  return refkey("undefined");
+}
+
+export function createSymbol(
+  type: SymbolGeneratingType,
+  scope: FileScope,
+): OutputSymbol {
+  const { $ } = useTsp();
+  const name = $.type.getPlausibleName(type);
+  return new TSPOutputSymbol(name, scope.spaceFor("symbols"), {
+    refkeys: [createRefkey(type)],
+  });
+}
+
+export function addExternalSymbol(
+  namespace: string,
+  importString: string,
+  scope: BasicScope,
+) {
+  scope.symbols.add(
+    new TSPOutputSymbol(namespace, scope.spaceFor("symbols"), {
+      refkeys: [refkey(namespace)],
+      external: true,
+      using: namespace,
+      import: importString,
+    }),
+  );
+}
+
+export function addSymbol(type: SymbolGeneratingType, scope: FileScope): void {
+  const symbol = createSymbol(type, scope);
+  scope.symbols.add(symbol);
+}
+
+function getImport(
+  {
+    pathUp,
+    pathDown,
+  }: ResolutionResult<FileScope | ModuleScope, TSPOutputSymbol>,
+  currentScope: BasicScope,
+) {
+  const prefix =
+    pathUp.length > 1
+      ? pathUp
+          .filter((s) => s.id !== currentScope.id)
+          .map((p) => "..")
+          .join("/")
+      : ".";
+  const suffix = pathDown.map((p) => p.path).join("/");
+  return `${prefix}/${suffix}`;
+}
+
+export function addImport(type: SymbolGeneratingType | Decorator) {
+  const scope = useScope() as FileScope;
+  const result = resolve<FileScope | ModuleScope, TSPOutputSymbol>(
+    createRefkey(type),
+  );
+
+  memo(() => {
+    if (result.value !== undefined) {
+      const { symbol } = result.value;
+      if (symbol.external) {
+        if (symbol.import && symbol.using) {
+          scope.addImport(symbol.import);
+          scope.addUsing(symbol.using);
+        }
+      } else if (
+        symbol.scope?.id !== scope.id &&
+        isSymbolGeneratingType(type)
+      ) {
+        const importPath = getImport(result.value, scope);
+        (scope as FileScope).addImport(importPath);
+      }
+    }
+  });
+}
+
+export function getDecorators(type: DecoratedType): DecoratorApplication[] {
+  return type.decorators
+    .filter((d) => d.definition !== undefined)
+    .filter(
+      ({ definition }) =>
+        !["@doc", "docFromCommentDecorator"].includes(definition!.name),
+    );
+}

@@ -1,0 +1,81 @@
+import { describe, expect, it } from "vitest";
+import { emit, multiline, normalizeDefinition } from "./common.js";
+
+describe("Union", () => {
+  it("Should emit inline unions including string and numeric literals", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model Result {
+              outcome: "ok" | "error" | 200 | 500;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Result"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition(
+        'model Result { outcome: "ok" | "error" | 200 | 500; }',
+      ),
+    );
+  });
+
+  it("Should reference named unions by name in properties", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            union PetTag { name: string, id: int32 };
+            model Dog { tag: PetTag; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["PetTag", "Dog"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("model Dog { tag: PetTag; }"),
+    );
+  });
+
+  it("Should emit named union declarations with variant docs and names", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            /** Pet tag */
+            union PetTag {
+              /** use pet name */
+              name: string,
+              /** use numeric id */
+              id: int32,
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["PetTag"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("/** Pet tag */"),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("union PetTag"),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("/** use pet name */"),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("name: string"),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("/** use numeric id */"),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("id: int32"),
+    );
+  });
+});

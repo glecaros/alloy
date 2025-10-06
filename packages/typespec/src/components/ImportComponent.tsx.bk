@@ -1,0 +1,7 @@
+export interface ImportProps {
+  module: string;
+}
+
+export function ImportComponent({ module }: ImportProps) {
+  return <>import "{module}";</>;
+}

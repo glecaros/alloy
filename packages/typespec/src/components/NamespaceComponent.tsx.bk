@@ -1,0 +1,26 @@
+import { Namespace } from "@typespec/compiler";
+import { DecoratorComponent } from "./DecoratorComponent.jsx";
+import { For, Show } from "@alloy-js/core";
+import { getDecorators } from "./scopes/util.js";
+
+export interface NamespaceProps {
+  namespace: Namespace;
+  includeDecorators?: boolean;
+}
+
+export function NamespaceComponent(props: NamespaceProps) {
+  const { namespace, includeDecorators } = props;
+  const name = namespace.name;
+  const decorators = getDecorators(namespace);
+
+  return (
+    <>
+      <Show when={includeDecorators ?? false}>
+        <For each={decorators} hardline ender={<hbr />}>
+          {(decorator) => <DecoratorComponent decorator={decorator} />}
+        </For>
+      </Show>
+      namespace {name};
+    </>
+  );
+}

@@ -1,0 +1,66 @@
+import { For, Indent } from "@alloy-js/core";
+import { checkFormatTypeSpec, Value } from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { NameComponent } from "./NameComponent.jsx";
+
+export interface ValueProps {
+  value: Value;
+}
+
+export function ValueComponent({ value }: ValueProps) {
+  const { $ } = useTsp();
+  if ($.value.isBoolean(value)) {
+    return <>{value.value ? "true" : "false"}</>;
+  }
+  if ($.value.isString(value)) {
+    return <>{JSON.stringify(value.value)}</>;
+  }
+  if ($.value.isNumeric(value)) {
+    return <>{value.value}</>;
+  }
+  if ($.value.isEnum(value)) {
+    const enumValue = value.value;
+
+    return (
+      <>
+        {enumValue.enum.name}.{enumValue.name}
+      </>
+    );
+  }
+  if ($.value.isArray(value)) {
+    return (
+      <>
+        #[
+        <Indent trailingBreak>
+          <For each={value.values} comma hardline ender={<>,</>}>
+            {(item) => (
+              <>
+                <ValueComponent value={item} />
+              </>
+            )}
+          </For>
+        </Indent>
+        ]
+      </>
+    );
+  }
+  if ($.value.isObject(value)) {
+    return (
+      <>
+        #{"{"}
+        <Indent trailingBreak>
+          <For each={value.properties.entries()} hardline>
+            {([key, val]) => (
+              <>
+                <NameComponent name={key} />:{" "}
+                <ValueComponent value={val.value} />,
+              </>
+            )}
+          </For>
+        </Indent>
+        {"}"}
+      </>
+    );
+  }
+  return <>{String(value)}</>;
+}

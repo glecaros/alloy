@@ -1,0 +1,26 @@
+import { BasicScope } from "@alloy-js/core";
+import { Namespace } from "@typespec/compiler";
+
+export class ModuleScope extends BasicScope {
+  constructor(
+    name: string,
+    path: string,
+    namespace: Namespace,
+    parent?: ModuleScope,
+  ) {
+    super(name, parent);
+    this.#path = path;
+    this.#namespace = namespace;
+  }
+
+  #path: string;
+  #namespace: Namespace;
+
+  get path(): string {
+    return this.#path;
+  }
+
+  get namespace(): Namespace {
+    return this.#namespace;
+  }
+}

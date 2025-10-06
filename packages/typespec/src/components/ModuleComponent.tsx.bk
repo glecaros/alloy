@@ -1,0 +1,52 @@
+import { Show, SourceDirectory, SourceFile } from "@alloy-js/core";
+import { Namespace, Operation, Type } from "@typespec/compiler";
+import { ImportComponent } from "./ImportComponent.jsx";
+import { TSPSourceFile } from "./TSPSourceFile.jsx";
+import { BaseModule } from "./BaseModuleComponent.jsx";
+
+export interface ModuleProps {
+  name: string;
+  path: string;
+  namespace: Namespace;
+  types: Type[];
+  operations: Operation[];
+}
+export function ModuleComponent({
+  name,
+  path,
+  types,
+  operations,
+  namespace,
+}: ModuleProps) {
+  const hasModels = types.length > 0;
+  const hasOperations = operations.length > 0;
+
+  return (
+    <BaseModule name={name} path={path} namespace={namespace} addSymbols>
+      <SourceDirectory path={path}>
+        <Show when={hasModels}>
+          <TSPSourceFile
+            path="models.tsp"
+            namespace={namespace}
+            types={types}
+          />
+        </Show>
+        <Show when={hasOperations}>
+          <TSPSourceFile
+            path="operations.tsp"
+            namespace={namespace}
+            operations={operations}
+          />
+        </Show>
+        <SourceFile path="main.tsp" filetype="tsp">
+          <Show when={hasModels}>
+            <ImportComponent module="./models.tsp" />
+          </Show>
+          <Show when={hasOperations}>
+            <ImportComponent module="./operations.tsp" />
+          </Show>
+        </SourceFile>
+      </SourceDirectory>
+    </BaseModule>
+  );
+}

@@ -1,0 +1,92 @@
+import { ModelProperty, Type } from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { Documentation } from "./Documentation.jsx";
+import { For, Show } from "@alloy-js/core";
+import { TypeComponent } from "./TypeComponent.jsx";
+import { ValueComponent } from "./Value.jsx";
+import { DecoratorComponent } from "./DecoratorComponent.jsx";
+import { addImport, getDecorators } from "./scopes/util.js";
+import { NameComponent } from "./NameComponent.jsx";
+
+export interface ModelPropertyProps {
+  property: ModelProperty;
+}
+
+export function ModelPropertyComponent({ property }: ModelPropertyProps) {
+  const { $ } = useTsp();
+  const doc = $.type.getDoc(property);
+  const optional = property.optional;
+  const value = property.defaultValue;
+  const decorators = getDecorators(property);
+  return (
+    <>
+      <Show when={Boolean(doc)}>
+        <Documentation doc={doc!} />
+        <hbr />
+      </Show>
+      <For each={decorators} hardline ender={<hbr />}>
+        {(decorator) => <DecoratorComponent decorator={decorator} />}
+      </For>
+      <NameComponent name={property.name} />
+      <Show when={optional}>?</Show>: <ModelPropertyType type={property.type} />
+      <Show when={Boolean(value)}>
+        {" "}
+        = <ValueComponent value={value!} />
+      </Show>
+    </>
+  );
+}
+
+export interface ModelPropertyTypeProps {
+  type: Type;
+}
+
+export function ModelPropertyType({ type }: ModelPropertyTypeProps) {
+  const { $ } = useTsp();
+  if (
+    ($.model.is(type) ||
+      $.union.is(type) ||
+      $.enum.is(type) ||
+      $.scalar.is(type)) &&
+    type.name !== undefined &&
+    type.name.length > 0
+  ) {
+    addImport(type);
+  }
+  if ($.array.is(type)) {
+    const elementType = $.array.getElementType(type);
+    return (
+      <>
+        <Show when={$.union.is(elementType)}>(</Show>
+        <ModelPropertyType type={elementType} />
+        <Show when={$.union.is(elementType)}>)</Show>
+        []
+      </>
+    );
+  }
+  if (
+    ($.model.is(type) ||
+      $.enum.is(type) ||
+      $.union.is(type) ||
+      $.scalar.is(type)) &&
+    (type.name?.length ?? 0) > 0
+  ) {
+    if ($.model.is(type)) {
+      const args = type.templateMapper?.args ?? [];
+      return (
+        <>
+          <NameComponent name={type.name!} />
+          <Show when={args.length > 0}>
+            {"<"}
+            <For each={args} joiner={", "} enderPunctuation={false}>
+              {(arg) => <ModelPropertyType type={arg as Type} />}
+            </For>
+            {">"}
+          </Show>
+        </>
+      );
+    }
+    return <NameComponent name={type.name!} />;
+  }
+  return <TypeComponent type={type} />;
+}

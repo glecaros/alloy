@@ -1,0 +1,69 @@
+import {
+  Children,
+  For,
+  Scope,
+  Show,
+  SourceFile,
+  useScope,
+} from "@alloy-js/core";
+import { Namespace, Operation, Type } from "@typespec/compiler";
+import { NamespaceComponent } from "./NamespaceComponent.jsx";
+import { TypeComponent } from "./TypeComponent.jsx";
+import { OperationComponent } from "./OperationComponent.jsx";
+import { FileScope } from "./scopes/file-scope.js";
+import { ModuleScope } from "./scopes/module-scope.js";
+import { ImportComponent } from "./ImportComponent.jsx";
+import { UsingComponent } from "./UsingComponent.jsx";
+
+export interface TSPSourceFileProps {
+  path: string;
+  namespace: Namespace;
+  includeNamespaceDecorators?: boolean;
+  types?: Type[];
+  operations?: Operation[];
+  additionalImports?: Children;
+}
+
+export function TSPSourceFile({
+  path,
+  namespace,
+  includeNamespaceDecorators,
+  types,
+  operations,
+  additionalImports,
+}: TSPSourceFileProps) {
+  const parent = useScope() as ModuleScope;
+  const fileScope = new FileScope(path, namespace, parent);
+
+  return (
+    <SourceFile path={path} filetype="tsp">
+      <Show when={Boolean(additionalImports)}>
+        {additionalImports}
+        <hbr />
+      </Show>
+      <For each={fileScope.getImports()} hardline ender={<hbr />}>
+        {(importPath) => <ImportComponent module={importPath} />}
+      </For>
+      <For each={fileScope.getUsings()} hardline ender={<hbr />}>
+        {(using) => <UsingComponent namespace={using} />}
+      </For>
+      <Scope value={fileScope}>
+        <NamespaceComponent
+          namespace={namespace}
+          includeDecorators={includeNamespaceDecorators}
+        />
+        <hbr />
+        <Show when={Boolean(types)}>
+          <For doubleHardline each={types!}>
+            {(type) => <TypeComponent type={type} />}
+          </For>
+        </Show>
+        <Show when={Boolean(operations)}>
+          <For doubleHardline each={operations!}>
+            {(operation) => <OperationComponent operation={operation} />}
+          </For>
+        </Show>
+      </Scope>
+    </SourceFile>
+  );
+}

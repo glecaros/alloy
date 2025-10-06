@@ -1,0 +1,79 @@
+import { For, Indent, Show, useScope } from "@alloy-js/core";
+import { Union, UnionVariant } from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { Documentation } from "./Documentation.jsx";
+import { NameComponent } from "./NameComponent.jsx";
+import { ModelPropertyType } from "./ModelProperty.jsx";
+import { addSymbol, getDecorators } from "./scopes/util.js";
+import { FileScope } from "./scopes/file-scope.js";
+import { DecoratorComponent } from "./DecoratorComponent.jsx";
+
+export interface UnionProps {
+  union: Union;
+}
+
+export function UnionComponent({ union }: UnionProps) {
+  const variants = union.variants.values();
+  if (union.expression) {
+    return (
+      <For each={variants} joiner={" | "}>
+        {(variant) => <UnionVariantComponent variant={variant} />}
+      </For>
+    );
+  } else {
+    const { $ } = useTsp();
+    const doc = $.type.getDoc(union);
+    const scope = useScope();
+    const name = union.name;
+    const decorators = getDecorators(union);
+    addSymbol(union, scope as FileScope);
+
+    if (name === undefined) {
+      throw new Error("Union must have a name");
+    }
+
+    return (
+      <>
+        <Show when={Boolean(doc)}>
+          <Documentation doc={doc!} />
+          <hbr />
+        </Show>
+        <For each={decorators} hardline ender={<hbr />}>
+          {(decorator) => <DecoratorComponent decorator={decorator} />}
+        </For>
+        union <NameComponent name={name} /> {"{"}
+        <Indent trailingBreak>
+          <For each={variants} hardline>
+            {(variant) => (
+              <>
+                <UnionVariantComponent variant={variant} />,
+              </>
+            )}
+          </For>
+        </Indent>
+        {"}"}
+      </>
+    );
+  }
+}
+
+export interface UnionVariantProps {
+  variant: UnionVariant;
+}
+
+export function UnionVariantComponent({ variant }: UnionVariantProps) {
+  const { $ } = useTsp();
+  const doc = $.type.getDoc(variant);
+  return (
+    <>
+      <Show when={Boolean(doc)}>
+        <Documentation doc={doc!} />
+        <hbr />
+      </Show>
+      <Show when={typeof variant.name === "string"}>
+        <NameComponent name={variant.name as string} />:
+      </Show>{" "}
+      <ModelPropertyType type={variant.type} />
+    </>
+  );
+}

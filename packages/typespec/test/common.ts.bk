@@ -1,0 +1,127 @@
+import { mkdtemp, rm, writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+import { Tester } from "./tester.js";
+import { OptionsFile } from "../src/options.js";
+import YAML from "yaml";
+
+export interface ParsedModel {
+  name: string;
+  properties: { [key: string]: ParsedPropertyMetadata };
+}
+
+export interface ParsedPropertyMetadata {
+  optional: boolean;
+  type: string;
+}
+
+export function normalizeDefinition(code: string) {
+  return code
+    .trim()
+    .replace(/[\r\n]/g, " ")
+    .replace(/\s\s+/g, " ");
+}
+
+export function multiline(strings: TemplateStringsArray, ...values: any[]) {
+  let result = strings[0];
+  for (let i = 0; i < values.length; i++) {
+    result += values[i] + strings[i + 1];
+  }
+
+  const lines = result.split("\n");
+
+  if (lines[0].trim() === "") lines.shift();
+  if (lines[lines.length - 1].trim() === "") lines.pop();
+
+  const nonEmptyLines = lines.filter((line) => line.trim() !== "");
+  if (nonEmptyLines.length === 0) return "";
+
+  const minIndent = Math.min(
+    ...nonEmptyLines.map((line) => line.match(/^ */)?.[0].length || 0),
+  );
+
+  return lines.map((line) => line.slice(minIndent)).join("\n");
+}
+
+export interface ExtraOptions {
+  nameAnonymousTypes?: boolean;
+  unionsToHierarchy?: boolean;
+}
+
+/**
+ * Parse TypeSpec output to extract model definitions and their properties
+ */
+export function parseModels(output: string): ParsedModel[] {
+  const models: ParsedModel[] = [];
+  const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
+
+  let modelMatch;
+  while ((modelMatch = modelRegex.exec(output)) !== null) {
+    const modelName = modelMatch[1];
+    const modelBody = modelMatch[2];
+
+    const properties: { [key: string]: ParsedPropertyMetadata } = {};
+
+    // Parse properties - handle both simple types and model references, including optional properties
+    const propertyRegex = /(\w+)(\??):\s*([^;]+);/g;
+    let propMatch;
+    while ((propMatch = propertyRegex.exec(modelBody)) !== null) {
+      const propName = propMatch[1];
+      const optional = propMatch[2] === "?";
+      const type = propMatch[3].trim();
+
+      // Determine if the type is a reference (not a built-in type)
+      properties[propName] = {
+        optional,
+        type,
+      };
+    }
+
+    models.push({
+      name: modelName,
+      properties,
+    });
+  }
+
+  return models;
+}
+
+/**
+ * Find a model by name in the parsed models
+ */
+export function findModel(
+  models: ParsedModel[],
+  name: string,
+): ParsedModel | undefined {
+  return models.find((model) => model.name === name);
+}
+
+export async function emit(
+  code: string,
+  options: OptionsFile,
+  extraOptions?: ExtraOptions,
+) {
+  const tempDir = await mkdtemp(join(tmpdir(), "test"));
+  try {
+    const optionsFilePath = join(tempDir, "options.yaml");
+    await writeFile(optionsFilePath, YAML.stringify(options));
+
+    const runner = await Tester.createInstance();
+    const { outputs } = await runner.compile(code, {
+      compilerOptions: {
+        options: {
+          "identity-emitter": {
+            "options-file": optionsFilePath,
+            "name-anonymous-types": extraOptions?.nameAnonymousTypes ?? false,
+            "unions-to-hierarchy": extraOptions?.unionsToHierarchy ?? false,
+          },
+        },
+      },
+    });
+    return outputs;
+  } finally {
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }
+}

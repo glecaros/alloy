@@ -1,0 +1,24 @@
+import { describe, expect, it } from "vitest";
+import { emit, multiline, normalizeDefinition } from "./common.js";
+
+describe("Imports", () => {
+  it("emits an import when a model is referenced", async () => {
+    const code = multiline`
+      namespace Definition;
+
+      model B { x: int32; }
+      model A { b: B; }
+    `;
+    const options = {
+      namespace: "Definition",
+      groups: { a: { types: ["A"] }, b: { types: ["B"] } },
+    };
+
+    const result = await emit(code, options);
+    const out = result["a/models.tsp"]!;
+    expect(out).toBeDefined();
+    expect(normalizeDefinition(out)).toContain(
+      normalizeDefinition('import "../b/models.tsp";'),
+    );
+  });
+});

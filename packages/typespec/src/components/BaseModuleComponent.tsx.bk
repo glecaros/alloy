@@ -1,0 +1,29 @@
+import { Children } from "@alloy-js/core/jsx-runtime";
+import { Namespace } from "@typespec/compiler";
+import { ModuleScope } from "./scopes/module-scope.js";
+import { Scope, useScope } from "@alloy-js/core";
+import { addExternalSymbol } from "./scopes/util.js";
+
+export interface BaseModuleProps {
+  name: string;
+  path: string;
+  namespace: Namespace;
+  children: Children;
+  addSymbols?: boolean;
+}
+
+export function BaseModule({
+  name,
+  path,
+  namespace,
+  children,
+  addSymbols,
+}: BaseModuleProps) {
+  const parent = useScope() as ModuleScope | undefined;
+  const scope = new ModuleScope(name, path, namespace, parent);
+  if (addSymbols ?? false) {
+    addExternalSymbol("TypeSpec.OpenAPI", "@typespec/openapi", scope);
+    addExternalSymbol("TypeSpec.Http", "@typespec/http", scope);
+  }
+  return <Scope value={scope}>{children}</Scope>;
+}

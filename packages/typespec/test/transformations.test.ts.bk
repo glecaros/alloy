@@ -1,0 +1,92 @@
+import { describe, expect, it } from "vitest";
+import { emit, multiline, normalizeDefinition } from "./common.js";
+
+describe("transformations", () => {
+  describe("can transform unions to class hierarchies", () => {
+    it("can transform simple hierarchies", async () => {
+      const code = multiline`
+                namespace Definition;
+                model Foo {
+                    type: "foo";
+                }
+
+                model Bar {
+                    type: "bar";
+                }
+
+                @discriminated(#{ envelope: "none", discriminatorPropertyName: "type" })
+                union MyUnion {
+                    foo: Foo,
+                    bar: Bar
+                }
+                `;
+      const options = {
+        namespace: "Definition",
+        groups: { main: { types: ["MyUnion", "Foo", "Bar"] } },
+      };
+      const result = await emit(code, options, { unionsToHierarchy: true });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        "model Foo extends MyUnion",
+      );
+      expect(normalizeDefinition(output)).toContain(
+        "model Bar extends MyUnion",
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                @discriminator("type")
+                model MyUnion {
+                type: string;
+                }`),
+      );
+    });
+    it("maintains existing decorators in both the union and the variants", async () => {
+      const code = multiline`
+                namespace Definition;
+                /** This is foo's doc */
+                @summary("This is foo")
+                model Foo {
+                    type: "foo";
+                }
+
+
+                model Bar {
+                    type: "bar";
+                }
+
+                @discriminated(#{ envelope: "none", discriminatorPropertyName: "type" })
+                /** This is my union */
+                @summary("This is my union")
+                union MyUnion {
+                    foo: Foo,
+                    bar: Bar
+                }
+                `;
+      const options = {
+        namespace: "Definition",
+        groups: { main: { types: ["MyUnion", "Foo", "Bar"] } },
+      };
+      const result = await emit(code, options, {
+        unionsToHierarchy: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                /** This is my union */
+                @summary("This is my union")
+                @discriminator("type")
+                model MyUnion {
+                  type: string;
+                }`),
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                    /** This is foo's doc */
+                    @summary("This is foo")
+                    model Foo extends MyUnion {
+                        type: "foo";
+                    }`),
+      );
+    });
+  });
+});

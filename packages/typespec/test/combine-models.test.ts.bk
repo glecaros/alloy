@@ -1,0 +1,683 @@
+import { describe, expect, it } from "vitest";
+import { emit, parseModels, findModel } from "./common.js";
+import { OptionsFile } from "../src/options.js";
+
+describe("Model Combinations", () => {
+  it("should combine two identical models into one", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model Foo {
+        id: string;
+      }
+
+      model Bar {
+        id: string;
+      }
+
+      model Consumer1 {
+        foo: Foo;
+      }
+
+      model Consumer2 {
+        bar: Bar;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["FooBar", "Consumer1", "Consumer2"], // Use combined model name
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "FooBar",
+            source: ["Foo", "Bar"],
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+
+    // Parse the models from the output
+    const models = parseModels(modelsOutput);
+
+    // Should have exactly 3 models: FooBar (combined), Consumer1, Consumer2
+    expect(models).toHaveLength(3);
+
+    // Should have the combined model FooBar with the correct property
+    const fooBarModel = findModel(models, "FooBar");
+    expect(fooBarModel).toBeDefined();
+    expect(fooBarModel!.properties).toEqual({
+      id: { optional: false, type: "string" },
+    });
+
+    // Should not have the original Foo or Bar models
+    const fooModel = findModel(models, "Foo");
+    const barModel = findModel(models, "Bar");
+    expect(fooModel).toBeUndefined();
+    expect(barModel).toBeUndefined();
+
+    // Should have combined model
+    const consumer1Model = findModel(models, "Consumer1");
+    const consumer2Model = findModel(models, "Consumer2");
+    expect(consumer1Model).toBeDefined();
+    expect(consumer2Model).toBeDefined();
+    expect(consumer1Model!.properties).toEqual({
+      foo: { optional: false, type: "FooBar" },
+    });
+    expect(consumer2Model!.properties).toEqual({
+      bar: { optional: false, type: "FooBar" },
+    });
+  });
+
+  it("should combine models with different properties", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model ModelA {
+        id: string;
+        name: string;
+      }
+
+      model ModelB {
+        id: string;
+        description: string;
+      }
+
+      model Consumer {
+        a: ModelA;
+        b: ModelB;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel", "Consumer"], // Use combined model name
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["ModelA", "ModelB"],
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+
+    // Parse the models from the output
+    const models = parseModels(modelsOutput);
+
+    // Should have exactly 2 models: CombinedModel and Consumer
+    expect(models).toHaveLength(2);
+
+    // Should have the combined model with all properties from both source models
+    const combinedModel = findModel(models, "CombinedModel");
+    expect(combinedModel).toBeDefined();
+    expect(combinedModel!.properties).toEqual({
+      id: { optional: false, type: "string" },
+      name: { optional: false, type: "string" },
+      description: { optional: false, type: "string" },
+    });
+
+    // Should not have the original models
+    const modelA = findModel(models, "ModelA");
+    const modelB = findModel(models, "ModelB");
+    expect(modelA).toBeUndefined();
+    expect(modelB).toBeUndefined();
+
+    // Should have combined model
+    const consumerModel = findModel(models, "Consumer");
+    expect(consumerModel).toBeDefined();
+    expect(consumerModel!.properties).toEqual({
+      a: { optional: false, type: "CombinedModel" },
+      b: { optional: false, type: "CombinedModel" },
+    });
+  });
+
+  it("should work with operations that reference combined models", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model RequestModel {
+        id: string;
+        data: string;
+      }
+
+      model ResponseModel {
+        id: string;
+        result: string;
+      }
+
+      op processRequest(request: RequestModel): ResponseModel;
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["ProcessModel"], // Use combined model name
+          operations: ["processRequest"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "ProcessModel",
+            source: ["RequestModel", "ResponseModel"],
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    const operationsOutput = outputs["test/operations.tsp"];
+
+    expect(modelsOutput).toBeDefined();
+    expect(operationsOutput).toBeDefined();
+
+    // Parse the models from the output
+    const models = parseModels(modelsOutput);
+
+    // Should have exactly 1 model: ProcessModel
+    expect(models).toHaveLength(1);
+
+    // Should have the combined model with all properties from both source models
+    const processModel = findModel(models, "ProcessModel");
+    expect(processModel).toBeDefined();
+    expect(processModel!.properties).toEqual({
+      id: { optional: false, type: "string" },
+      data: { optional: false, type: "string" },
+      result: { optional: false, type: "string" },
+    });
+
+    // Should not have the original models
+    const requestModel = findModel(models, "RequestModel");
+    const responseModel = findModel(models, "ResponseModel");
+    expect(requestModel).toBeUndefined();
+    expect(responseModel).toBeUndefined();
+
+    // Should have operation that references the combined model
+    expect(operationsOutput).toContain(
+      "op processRequest(request: ProcessModel): ProcessModel;",
+    );
+  });
+
+  it("should transform property reference types", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model ModelA {
+        fieldA: string;
+      }
+
+      model ModelB {
+        fieldB: string;
+      }
+
+      model ModelC {
+        fieldC: string;
+      }
+
+      model ModelD {
+        fieldD: string;
+      }
+
+      model Consumer {
+        combined1: ModelA;
+        combined2: ModelC;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["Combined1", "Combined2", "Consumer"], // Use combined model names
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "Combined1",
+            source: ["ModelA", "ModelB"],
+          },
+          {
+            model: "Combined2",
+            source: ["ModelC", "ModelD"],
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+
+    // Parse the models from the output
+    const models = parseModels(modelsOutput);
+
+    // Should have exactly 3 models: Combined1, Combined2, and Consumer
+    expect(models).toHaveLength(3);
+
+    // Should have both combined models with correct properties
+    const combined1Model = findModel(models, "Combined1");
+    const combined2Model = findModel(models, "Combined2");
+    expect(combined1Model).toBeDefined();
+    expect(combined2Model).toBeDefined();
+    expect(combined1Model!.properties).toEqual({
+      fieldA: { optional: false, type: "string" },
+      fieldB: { optional: false, type: "string" },
+    });
+    expect(combined2Model!.properties).toEqual({
+      fieldC: { optional: false, type: "string" },
+      fieldD: { optional: false, type: "string" },
+    });
+
+    // Should not have any original models
+    const modelA = findModel(models, "ModelA");
+    const modelB = findModel(models, "ModelB");
+    const modelC = findModel(models, "ModelC");
+    const modelD = findModel(models, "ModelD");
+    expect(modelA).toBeUndefined();
+    expect(modelB).toBeUndefined();
+    expect(modelC).toBeUndefined();
+    expect(modelD).toBeUndefined();
+
+    // Should have consumer that references the combined models
+    const consumerModel = findModel(models, "Consumer");
+    expect(consumerModel).toBeDefined();
+    expect(consumerModel!.properties).toEqual({
+      combined1: { optional: false, type: "Combined1" },
+      combined2: { optional: false, type: "Combined2" },
+    });
+  });
+
+  it("should throw error when combining models with conflicting optionality", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model Foo {
+        id: string;
+      }
+
+      model Bar {
+        id?: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["Foo", "Bar"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "Combined",
+            source: ["Foo", "Bar"],
+          },
+        ],
+      },
+    };
+
+    // Should throw an error due to conflicting optionality
+    await expect(emit(testCode, options)).rejects.toThrow(
+      "Cannot combine models: property 'id' has conflicting optionality",
+    );
+  });
+
+  it("should throw error when combining models with conflicting types", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model Foo {
+        id: string;
+      }
+
+      model Bar {
+        id: int32;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["Foo", "Bar"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "Combined",
+            source: ["Foo", "Bar"],
+          },
+        ],
+      },
+    };
+
+    // Should throw an error due to conflicting types
+    await expect(emit(testCode, options)).rejects.toThrow(
+      "Cannot combine models: property 'id' has conflicting types",
+    );
+  });
+
+  it("should throw error when target model name already exists", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model Foo {
+        id: string;
+        name: string;
+      }
+
+      model Bar {
+        id: string;
+        description: string;
+      }
+
+      model ExistingModel {
+        existingField: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["Foo", "Bar", "ExistingModel"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "ExistingModel", // This name already exists
+            source: ["Foo", "Bar"],
+          },
+        ],
+      },
+    };
+
+    // Should throw an error because the target model name already exists
+    await expect(emit(testCode, options)).rejects.toThrow(
+      "Cannot combine models: target model 'ExistingModel' already exists",
+    );
+  });
+
+  it("should throw error when source model doesn't exist", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model Foo {
+        id: string;
+        name: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["Foo", "NonExistentModel"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["Foo", "NonExistentModel"], // NonExistentModel doesn't exist
+          },
+        ],
+      },
+    };
+
+    // Should throw an error because one of the source models doesn't exist
+    await expect(emit(testCode, options)).rejects.toThrow(
+      "Cannot combine models: source model(s) [NonExistentModel] do not exist. Check your options.yaml file at xpath: $.transformations.combine-models[0].source",
+    );
+  });
+
+  it("should succeed when combining models with compatible properties", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model ModelA {
+        id: string;
+        name: string;
+      }
+
+      model ModelB {
+        id: string;
+        description: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel"], // Use combined model name
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["ModelA", "ModelB"],
+          },
+        ],
+      },
+    };
+
+    // Should succeed - both models have id: string (same type and optionality)
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+
+    const models = parseModels(modelsOutput);
+
+    // Should have exactly 1 model: CombinedModel
+    expect(models).toHaveLength(1);
+
+    const combinedModel = findModel(models, "CombinedModel");
+    expect(combinedModel).toBeDefined();
+    expect(combinedModel!.properties).toEqual({
+      id: { optional: false, type: "string" },
+      name: { optional: false, type: "string" },
+      description: { optional: false, type: "string" },
+    });
+  });
+
+  it("should throw error when combining models with conflicting model-level decorators", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      @encodedName("application/json", "TypeA")
+      model ModelA {
+        id: string;
+      }
+
+      @encodedName("application/json", "TypeB")
+      model ModelB {
+        name: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["ModelA", "ModelB"],
+          },
+        ],
+      },
+    };
+
+    await expect(emit(testCode, options)).rejects.toThrow(
+      "Decorator conflict for '@$encodedName' on models being combined into 'CombinedModel'. Found different values between models [ModelA, ModelB].",
+    );
+  });
+
+  it("should throw error when combining models with conflicting property decorators", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      model ModelA {
+        @encodedName("application/json", "id_field")
+        id: string;
+      }
+
+      model ModelB {
+        @encodedName("application/json", "identifier")
+        id: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["ModelA", "ModelB"],
+          },
+        ],
+      },
+    };
+
+    await expect(emit(testCode, options)).rejects.toThrow(
+      "Decorator conflict for '@$encodedName' on property 'id' in models being combined into 'CombinedModel'. Found different values between models [ModelA, ModelB].",
+    );
+  });
+
+  it("should succeed when combining models with identical model-level decorators", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      @encodedName("application/json", "MyType")
+      model ModelA {
+        id: string;
+      }
+
+      @encodedName("application/json",  "MyType")
+      model ModelB {
+        name: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["ModelA", "ModelB"],
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+    expect(modelsOutput).toContain(
+      '@encodedName("application/json", "MyType")',
+    );
+    expect(modelsOutput).toContain("model CombinedModel {");
+  });
+
+  it("should succeed when combining models with identical property decorators", async () => {
+    const testCode = `
+      namespace TestService;
+      
+      @encodedName("application/json", "MyType")
+      @doc("Same model documentation")
+      model ModelA {
+        @doc("The ID field")
+        @encodedName("application/json", "id_field")
+        id: string;
+      }
+
+      @doc("Same model documentation")
+      @encodedName("application/json", "MyType")
+      model ModelB {
+        @encodedName("application/json", "id_field")
+        @doc("The ID field")
+        id: string;
+        name: string;
+      }
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: ["CombinedModel"],
+        },
+      },
+      transformations: {
+        "combine-models": [
+          {
+            model: "CombinedModel",
+            source: ["ModelA", "ModelB"],
+          },
+        ],
+      },
+    };
+
+    const outputs = await emit(testCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+
+    // Verify model-level decorators are preserved
+    expect(modelsOutput).toContain(
+      '@encodedName("application/json", "MyType")',
+    );
+    // Note: @doc decorators on models are not typically emitted in the output
+
+    // Verify property-level decorators are preserved
+    expect(modelsOutput).toContain(
+      '@encodedName("application/json", "id_field")',
+    );
+    expect(modelsOutput).toContain("/** The ID field */"); // @doc becomes JSDoc comment
+
+    // Verify the model structure
+    expect(modelsOutput).toContain("model CombinedModel {");
+    expect(modelsOutput).toContain("id: string;");
+    expect(modelsOutput).toContain("name: string;");
+  });
+});

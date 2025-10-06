@@ -1,0 +1,38 @@
+import { For, Match, Show, Switch } from "@alloy-js/core";
+import { DecoratorApplication, Type, Value } from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { ValueComponent } from "./Value.jsx";
+import { TypeComponent } from "./TypeComponent.jsx";
+import { addImport } from "./scopes/util.js";
+
+export interface DecoratorProps {
+  decorator: DecoratorApplication;
+}
+
+export function DecoratorComponent({ decorator }: DecoratorProps) {
+  const { $ } = useTsp();
+  const name = decorator.definition?.name;
+  const args = decorator.args;
+  addImport(decorator.definition!);
+  return (
+    <>
+      {name}
+      <Show when={args.length > 0}>
+        {"("}
+        <For each={args} joiner={", "}>
+          {({ value }) => (
+            <Switch>
+              <Match when={$.value.is(value)}>
+                <ValueComponent value={value as Value} />
+              </Match>
+              <Match when={$.type.is(value)}>
+                <TypeComponent type={value as Type} />
+              </Match>
+            </Switch>
+          )}
+        </For>
+        {")"}
+      </Show>
+    </>
+  );
+}

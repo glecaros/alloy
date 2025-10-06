@@ -1,0 +1,119 @@
+import { describe, expect, it } from "vitest";
+import { emit, multiline, normalizeDefinition } from "./common.js";
+
+describe("Spread", () => {
+  it("Should preserve spread syntax in models", async () => {
+    const typeSpecContent = multiline`
+      namespace TestService;
+      model Foo {
+        foo: string;
+      }
+
+      model Bar {
+        bar: int32;
+      }
+
+      model FooBar {
+        ...Foo;
+        ...Bar;
+      }
+    `;
+
+    const options = {
+      namespace: "TestService",
+      groups: { main: { types: ["Foo", "Bar", "FooBar"] } },
+    };
+
+    const result = await emit(typeSpecContent, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+
+    const actualOutput = result["main/models.tsp"];
+    expect(actualOutput.trim()).toBe(typeSpecContent.trim());
+  });
+
+  it("Should handle mixed spread and regular properties", async () => {
+    const typeSpecContent = multiline`
+      namespace TestService;
+      model Base {
+        id: string;
+      }
+
+      model Extended {
+        ...Base;
+        name: string;
+        age?: int32;
+      }
+    `;
+
+    const options = {
+      namespace: "TestService",
+      groups: { main: { types: ["Base", "Extended"] } },
+    };
+
+    const result = await emit(typeSpecContent, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+
+    const actualOutput = result["main/models.tsp"];
+    expect(actualOutput.trim()).toBe(typeSpecContent.trim());
+  });
+
+  it("Should handle multiple spreads from same model", async () => {
+    const typeSpecContent = multiline`
+      namespace TestService;
+      model Common {
+        shared: string;
+      }
+
+      model A {
+        ...Common;
+        propA: string;
+      }
+
+      model B {
+        ...Common;
+        propB: int32;
+      }
+    `;
+
+    const options = {
+      namespace: "TestService",
+      groups: { main: { types: ["Common", "A", "B"] } },
+    };
+
+    const result = await emit(typeSpecContent, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+
+    const actualOutput = result["main/models.tsp"];
+    expect(actualOutput.trim()).toBe(typeSpecContent.trim());
+  });
+
+  it("Should handle chained spread inheritance", async () => {
+    const typeSpecContent = multiline`
+      namespace TestService;
+      model Core {
+        coreField: string;
+      }
+
+      model Extended {
+        ...Core;
+        additionalField: int32;
+      }
+
+      model MultipleSpread {
+        ...Extended;
+        finalField: boolean;
+      }
+    `;
+
+    const options = {
+      namespace: "TestService",
+      groups: { main: { types: ["Core", "Extended", "MultipleSpread"] } },
+    };
+
+    const result = await emit(typeSpecContent, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+
+    const actualOutput = result["main/models.tsp"];
+    expect(actualOutput.trim()).toBe(typeSpecContent.trim());
+  });
+});

@@ -1,0 +1,338 @@
+import { emit, multiline, normalizeDefinition } from "./common.js";
+import { describe, expect, it } from "vitest";
+
+describe("Name anonymous types", () => {
+  describe("for models", () => {
+    it("simple anonymous model", async () => {
+      const code = multiline`
+                namespace Test;
+                model Foo {
+                    bar: {
+                        property: string;
+                    };
+                }`;
+      const options = {
+        namespace: "Test",
+        groups: { main: { types: ["Foo", "FooBar"] } },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBar {
+                property: string;
+                }`),
+      );
+    });
+    it("nested anonymous model", async () => {
+      const code = multiline`
+                namespace Test;
+                model Foo {
+                    bar: {
+                        nested: {
+                            property: string;
+                        }
+                    };
+                }`;
+      const options = {
+        namespace: "Test",
+        groups: { main: { types: ["Foo", "FooBar", "FooBarNested"] } },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBar {
+                nested: FooBarNested;
+                }`),
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBarNested {
+                property: string;
+                }`),
+      );
+    });
+    it("nested model with nullable property", async () => {
+      const code = multiline`
+                namespace Test;
+                model Foo {
+                    bar: {
+                        nested?: {
+                            property: string;
+                        } | null;
+                        other: int32;
+                    };
+                }`;
+      const options = {
+        namespace: "Test",
+        groups: { main: { types: ["Foo", "FooBar", "FooBarNested"] } },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBar {
+                nested?: FooBarNested | null;
+                other: int32;
+                }`),
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBarNested {
+                property: string;
+                }`),
+      );
+    });
+    it("nested model with array property", async () => {
+      const code = multiline`
+                namespace Test;
+                model Foo {
+                    bar: {
+                        nested: {
+                            property: string;
+                        }[];
+                        other: int32;
+                    };
+                }`;
+      const options = {
+        namespace: "Test",
+        groups: { main: { types: ["Foo", "FooBar", "FooBarNested"] } },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBar {
+                nested: FooBarNested[];
+                other: int32;
+                }`),
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBarNested {
+                property: string;
+                }`),
+      );
+    });
+    it("nested model with nullable array property", async () => {
+      const code = multiline`
+                namespace Test;
+                model Foo {
+                    bar: {
+                        nested?: {
+                            property: string;
+                        }[] | null;
+                        other: int32;
+                    };
+                }`;
+      const options = {
+        namespace: "Test",
+        groups: { main: { types: ["Foo", "FooBar", "FooBarNested"] } },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBar {
+                nested?: FooBarNested[] | null;
+                other: int32;
+                }`),
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBarNested {
+                property: string;
+                }`),
+      );
+    });
+    it("should not name union expressions", async () => {
+      const code = multiline`
+                namespace Test;
+                model Foo {
+                    bar: {
+                        nested: string | int32;
+                    };
+                }`;
+      const options = {
+        namespace: "Test",
+        groups: { main: { types: ["Foo", "FooBar"] } },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model FooBar {
+                nested: string | int32;
+                }`),
+      );
+      expect(normalizeDefinition(output)).not.toContain("FooBarNested");
+    });
+  });
+
+  describe("for unions", () => {
+    it("simple anonymous model", async () => {
+      const code = multiline`
+                namespace Test;
+                union MyUnion {
+                    foo: {
+                        property: string;
+                    },
+                    bar: {
+                        property: int32;
+                    }
+                }`;
+      const options = {
+        namespace: "Test",
+        groups: { main: { types: ["MyUnion", "MyUnionFoo", "MyUnionBar"] } },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model MyUnionFoo {
+                    property: string;
+                }`),
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model MyUnionBar {
+                    property: int32;
+                }`),
+      );
+    });
+  });
+
+  describe("for operation parameters", () => {
+    it("simple anonymous model", async () => {
+      const code = multiline`
+                namespace Test;
+
+                op listItems(query: { filter?: string }): string[];`;
+      const options = {
+        namespace: "Test",
+        groups: {
+          main: {
+            operations: ["listItems"],
+            types: ["ListItemsParametersQuery"],
+          },
+        },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model ListItemsParametersQuery {
+                    filter?: string;
+                }`),
+      );
+    });
+    it("should not name union expressions", async () => {
+      const code = multiline`
+                namespace Test;
+
+                op listItems(query: { filter: string | int32 }): string[];`;
+      const options = {
+        namespace: "Test",
+        groups: {
+          main: {
+            operations: ["listItems"],
+            types: ["ListItemsParametersQuery"],
+          },
+        },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model ListItemsParametersQuery {
+                    filter: string | int32;
+                }`),
+      );
+      expect(normalizeDefinition(output)).not.toContain(
+        "ListItemsParametersQueryFilter",
+      );
+    });
+  });
+
+  describe("for operation responses", () => {
+    it("simple anonymous model", async () => {
+      const code = multiline`
+                namespace Test;
+
+                op listItems(query: { filter?: string }): string[];
+                op getItem(id: string): { name: string; value: int32; };`;
+      const options = {
+        namespace: "Test",
+        groups: {
+          main: {
+            operations: ["listItems", "getItem"],
+            types: ["ListItemsParametersQuery", "GetItemResponse"],
+          },
+        },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model GetItemResponse {
+                    name: string;
+                    value: int32;
+                }`),
+      );
+    });
+    it("nested anonymous model", async () => {
+      const code = multiline`
+                namespace Test;
+
+                op getItem(id: string): { name: string; details: { value: int32; info?: string; } };`;
+      const options = {
+        namespace: "Test",
+        groups: {
+          main: {
+            operations: ["getItem"],
+            types: ["GetItemResponse", "GetItemResponseDetails"],
+          },
+        },
+      };
+      const result = await emit(code, options, {
+        nameAnonymousTypes: true,
+      });
+      const output = result["main/models.tsp"];
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model GetItemResponse {
+                    name: string;
+                    details: GetItemResponseDetails;
+                }`),
+      );
+      expect(normalizeDefinition(output)).toContain(
+        normalizeDefinition(multiline`
+                model GetItemResponseDetails {
+                    value: int32;
+                    info?: string;
+                }`),
+      );
+    });
+  });
+});

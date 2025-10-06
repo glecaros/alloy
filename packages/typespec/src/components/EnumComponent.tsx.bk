@@ -1,0 +1,70 @@
+import { For, Indent, Show, useScope } from "@alloy-js/core";
+import { Enum, EnumMember } from "@typespec/compiler";
+import { useTsp } from "@typespec/emitter-framework";
+import { Documentation } from "./Documentation.jsx";
+import { DecoratorComponent } from "./DecoratorComponent.jsx";
+import { addSymbol, getDecorators } from "./scopes/util.js";
+import { NameComponent } from "./NameComponent.jsx";
+import { FileScope } from "./scopes/file-scope.js";
+
+export interface EnumProps {
+  enumeration: Enum;
+}
+
+export function EnumComponent({ enumeration }: EnumProps) {
+  const { $ } = useTsp();
+  const doc = $.type.getDoc(enumeration);
+  const name = enumeration.name;
+  const decorators = getDecorators(enumeration);
+  const members = enumeration.members.values();
+  const scope = useScope();
+  addSymbol(enumeration, scope as FileScope);
+
+  return (
+    <>
+      <Show when={Boolean(doc)}>
+        <Documentation doc={doc!} />
+        <hbr />
+      </Show>
+      <For each={decorators} hardline ender={<hbr />}>
+        {(decorator) => <DecoratorComponent decorator={decorator} />}
+      </For>
+      enum <NameComponent name={name} /> {"{"}
+      <Indent trailingBreak>
+        <For hardline each={members}>
+          {(member) => (
+            <>
+              <EnumMemberComponent member={member} />,
+            </>
+          )}
+        </For>
+      </Indent>
+      {"}"}
+    </>
+  );
+}
+
+export interface EnumMemberProps {
+  member: EnumMember;
+}
+
+export function EnumMemberComponent({ member }: EnumMemberProps) {
+  const { $ } = useTsp();
+  const doc = $.type.getDoc(member);
+  const name = member.name;
+  const hasValue = member.value !== undefined;
+  const isString = typeof member.value === "string";
+  return (
+    <>
+      <Show when={Boolean(doc)}>
+        <Documentation doc={doc!} />
+        <hbr />
+      </Show>
+      <NameComponent name={name} />
+      <Show when={hasValue}>
+        {" "}
+        {isString ? `"${member.value}"` : member.value}
+      </Show>
+    </>
+  );
+}

@@ -1,0 +1,81 @@
+import { describe, expect, it } from "vitest";
+import { emit } from "./common.js";
+import { OptionsFile } from "../src/options.js";
+
+describe("Renames", () => {
+  it("should rename functions, models, enums, and unions", async () => {
+    const complexCode = `
+      namespace TestService;
+      
+      model Model {
+        id: string;
+        assistantModels?: AssistantSupportedModels;
+        sessionRequest?: RealtimeSessionCreateRequestUnion;
+      }
+      
+      
+      enum AssistantSupportedModels {
+        GPT35: "gpt-3.5-turbo",
+        GPT4: "gpt-4",
+      }
+      
+      union RealtimeSessionCreateRequestUnion {
+        string: string,
+        number: int32,
+      }
+      
+      model ComplexResponse {
+        models: Model[];
+        supportedModels: AssistantSupportedModels[];
+        sessionRequest: RealtimeSessionCreateRequestUnion;
+      }
+      
+      op listModels(): ComplexResponse;
+    `;
+
+    const options: OptionsFile = {
+      namespace: "TestService",
+      groups: {
+        test: {
+          types: [
+            "Model",
+            "AssistantSupportedModels",
+            "RealtimeSessionCreateRequestUnion",
+            "ComplexResponse",
+          ],
+          operations: ["listModels"],
+        },
+      },
+      renames: {
+        listModels: "getModels",
+        Model: "OpenAIModel",
+        AssistantSupportedModels: "AgentsSupportedModels",
+        RealtimeSessionCreateRequestUnion:
+          "OpenAIRealtimeSessionCreateRequestUnion",
+        ComplexResponse: "OpenAIComplexResponse",
+      },
+    };
+
+    const outputs = await emit(complexCode, options);
+    const modelsOutput = outputs["test/models.tsp"];
+    expect(modelsOutput).toBeDefined();
+    expect(modelsOutput).toContain("model OpenAIModel {");
+    expect(modelsOutput).toContain("assistantModels?: AgentsSupportedModels;");
+    expect(modelsOutput).toContain(
+      "sessionRequest?: OpenAIRealtimeSessionCreateRequestUnion;",
+    );
+    expect(modelsOutput).toContain("enum AgentsSupportedModels {");
+    expect(modelsOutput).toContain(
+      "union OpenAIRealtimeSessionCreateRequestUnion {",
+    );
+    expect(modelsOutput).toContain("model OpenAIComplexResponse {");
+    expect(modelsOutput).toContain("models: OpenAIModel[];");
+    expect(modelsOutput).toContain("supportedModels: AgentsSupportedModels[];");
+
+    const operationsOutput = outputs["test/operations.tsp"];
+    expect(operationsOutput).toBeDefined();
+    expect(operationsOutput).toContain(
+      "op getModels(): OpenAIComplexResponse;",
+    );
+  });
+});

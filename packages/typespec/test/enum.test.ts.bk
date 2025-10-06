@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+import { emit, multiline, normalizeDefinition } from "./common.js";
+
+describe("Enum", () => {
+  it("Should emit models that reference enums by name", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            enum Breed { Beagle, Collie, Terrier }
+            model Dog { breed: Breed; }`;
+    const expected = multiline`model Dog { breed: Breed; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog", "Breed"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition(expected),
+    );
+  });
+
+  it("Should pass through enum-valued defaults", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            enum Size { Small, Medium, Large }
+            model Shirt { size: Size = Size.Medium; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Shirt", "Size"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("model Shirt { size: Size = Size.Medium; }"),
+    );
+  });
+});

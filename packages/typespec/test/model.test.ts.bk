@@ -1,0 +1,388 @@
+import { describe, expect, it } from "vitest";
+import { emit, multiline, normalizeDefinition } from "./common.js";
+
+describe("Model", () => {
+  it("Should handle simple model with scalar properties", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model Dog {
+              name: string;
+              age: uint8;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toBe(
+      normalizeDefinition(model),
+    );
+  });
+  it("Should handle model with custom scalar properties", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            scalar PetId extends string;
+            model Pet {
+              id: PetId;
+            }`;
+    const expected = multiline`
+            model Pet {
+              id: PetId;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Pet", "PetId"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(expected),
+    );
+  });
+  it("Should handle model with nested properties", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model Dog {
+              owner: {
+                name: string;
+              };
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(model),
+    );
+  });
+  it("Should handle array properties", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model Dog {
+              tags: string[];
+              scores: int32[];
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(model),
+    );
+  });
+  it("Should handle optional properties", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model Dog {
+              nickname?: string;
+              age?: int32;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(model),
+    );
+  });
+  it("Should handle decorators on the model", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            @encodedName("application/json", "doggie")
+            model Dog {
+              name: string;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition('@encodedName("application/json", "doggie")'),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("model Dog { name: string; }"),
+    );
+  });
+
+  it("Should handle decorators on properties", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model Dog {
+              @encodedName("application/json", "dogName")
+              name: string;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition('@encodedName("application/json", "dogName")'),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("name: string;"),
+    );
+  });
+
+  it("Should handle documentation comments", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            /**
+             * Represents a dog
+             */
+            model Dog {
+              name: string;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("/** Represents a dog */"),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("model Dog { name: string; }"),
+    );
+  });
+
+  it("Should handle documentation decorators", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            @doc("Dog type")
+            model Dog {
+              @doc("The name of the dog")
+              name: string;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(code, options);
+    const output = result["main/models.tsp"]!;
+    expect(output).toBeDefined();
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("/** Dog type */"),
+    );
+    expect(normalizeDefinition(output)).toContain(
+      normalizeDefinition("/** The name of the dog */"),
+    );
+  });
+
+  it("Should handle default values for properties", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model Dog {
+              age: int32 = 3;
+              name: string = "Fido";
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toBe(
+      normalizeDefinition(model),
+    );
+  });
+
+  it("Should handle properties referencing other models", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model Owner { name: string; }
+            model Dog { owner: Owner; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Owner", "Dog"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toBe(
+      normalizeDefinition(code),
+    );
+  });
+
+  it("Should handler array properties referencing other models", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model Owner { name: string; }
+            model Dog { previousOwners: Owner[]; }`;
+    const expected = multiline`model Dog { previousOwners: Owner[]; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog", "Owner"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toBe(
+      normalizeDefinition(code),
+    );
+  });
+
+  it("Should handle enum property types", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            enum Breed { Beagle, Collie, Terrier }
+            model Dog { breed: Breed; }`;
+    const expected = multiline`model Dog { breed: Breed; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog", "Breed"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(expected),
+    );
+  });
+
+  it("Should handle union property types", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model Dog {
+              tag: string | int32;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toBe(
+      normalizeDefinition(model),
+    );
+  });
+
+  it("Should handle boolean default values", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model FeatureFlag {
+              enabled: boolean = true;
+              disabled?: boolean = false;
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["FeatureFlag"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toBe(
+      normalizeDefinition(model),
+    );
+  });
+
+  it("Should handle arrays of anonymous model types", async () => {
+    const model = multiline`
+            namespace Definition;
+
+            model Zoo {
+              animals: {
+                name: string;
+                age?: uint8;
+              }[];
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Zoo"] } },
+    };
+    const result = await emit(model, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(model),
+    );
+  });
+
+  it.skip("Should preserve namespace around models", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            namespace Contoso {
+              model Dog { name: string; }
+            }`;
+    const expected = multiline`
+            namespace Definition;
+
+            namespace Contoso {
+              model Dog { name: string; }
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Contoso.Dog"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(expected),
+    );
+  });
+
+  it.skip("Should print template instances in property types", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model Box<T> { value: T; }
+            model UsesBox { b: Box<string>; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["UsesBox", "Box"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition("model UsesBox { b: Box<string>; }"),
+    );
+  });
+
+  it("Should print object defaults for model properties", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model WithDefaults {
+              meta: {
+                a: int32;
+                b: string;
+              } = #{ a: 1, b: "x" };
+            }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["WithDefaults"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/models.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/models.tsp"]!)).toContain(
+      normalizeDefinition(
+        'meta: { a: int32; b: string; } = #{ a: 1, b: "x", };',
+      ),
+    );
+  });
+});

@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+import { emit, multiline, normalizeDefinition } from "./common.js";
+
+describe("Operations", () => {
+  it("Should create operations file and index import when operations are present", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model Dog { name: string; }
+            op getDog(id: string): Dog;`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"], operations: ["getDog"] } },
+    };
+    const result = await emit(code, options);
+
+    expect(result["main/operations.tsp"]).toBeDefined();
+    expect(normalizeDefinition(result["main/main.tsp"]!)).toContain(
+      normalizeDefinition('import "./models.tsp";'),
+    );
+    expect(normalizeDefinition(result["main/main.tsp"]!)).toContain(
+      normalizeDefinition('import "./operations.tsp";'),
+    );
+  });
+
+  it("Should not create operations file when no operations are provided", async () => {
+    const code = multiline`
+      namespace Definition;
+
+      model Cat { name: string; }`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Cat"] } },
+    };
+    const result = await emit(code, options);
+    expect(result["main/operations.tsp"]).toBeUndefined();
+    expect(normalizeDefinition(result["main/main.tsp"]!)).toContain(
+      normalizeDefinition('import "./models.tsp";'),
+    );
+  });
+
+  it("Should render operation signatures with params and return type", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            model Dog { name: string; }
+            op getDog(id: string): Dog;`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"], operations: ["getDog"] } },
+    };
+    const result = await emit(code, options);
+    const ops = result["main/operations.tsp"]!;
+    expect(ops).toBeDefined();
+    // Target behavior: op signature exists
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("op getDog(id: string): Dog;"),
+    );
+  });
+
+  it("Should render operation documentation above the signature", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            /** Dog model */
+            model Dog { name: string; }
+            /** Retrieve a dog by id */
+            op getDog(id: string): Dog;`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { types: ["Dog"], operations: ["getDog"] } },
+    };
+    const result = await emit(code, options);
+    const ops = result["main/operations.tsp"]!;
+    expect(ops).toBeDefined();
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("/** Retrieve a dog by id */"),
+    );
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("op getDog(id: string): Dog;"),
+    );
+  });
+
+  it("Should render decorators and documentation on operation parameters", async () => {
+    const code = multiline`
+            namespace Definition;
+
+            /** Update a dog */
+            op updateDog(
+              @doc("The dog id")
+              @encodedName("application/json", "dogId")
+              id: string,
+              @doc("New name")
+              name?: string
+            ): void;`;
+    const options = {
+      namespace: "Definition",
+      groups: { main: { operations: ["updateDog"] } },
+    };
+    const result = await emit(code, options);
+    const ops = result["main/operations.tsp"]!;
+    expect(ops).toBeDefined();
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("/** Update a dog */"),
+    );
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition('@encodedName("application/json", "dogId")'),
+    );
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("/** The dog id */"),
+    );
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("id: string"),
+    );
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("/** New name */"),
+    );
+    expect(normalizeDefinition(ops)).toContain(
+      normalizeDefinition("name?: string"),
+    );
+  });
+});

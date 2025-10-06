@@ -1,0 +1,42 @@
+import { BasicScope, reactive } from "@alloy-js/core";
+import { ModuleScope } from "./module-scope.js";
+import { Namespace } from "@typespec/compiler";
+
+export class FileScope extends BasicScope {
+  constructor(path: string, namespace: Namespace, parent: ModuleScope) {
+    super(path, parent);
+    this.#path = path;
+    this.#namespace = namespace;
+  }
+
+  #path: string;
+  #namespace: Namespace;
+
+  get path(): string {
+    return this.#path;
+  }
+
+  get namespace(): Namespace {
+    return this.#namespace;
+  }
+
+  #imports: Set<string> = reactive(new Set());
+
+  addImport(module: string) {
+    this.#imports.add(module);
+  }
+
+  getImports(): string[] {
+    return Array.from(this.#imports);
+  }
+
+  #usings: Set<string> = reactive(new Set());
+
+  addUsing(namespace: string) {
+    this.#usings.add(namespace);
+  }
+
+  getUsings(): string[] {
+    return Array.from(this.#usings);
+  }
+}
