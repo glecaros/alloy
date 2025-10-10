@@ -8,18 +8,18 @@ import {
   Type,
   Union,
 } from "@typespec/compiler";
-import { ModelComponent } from "./ModelComponent.jsx";
+import { Model } from "./Model.jsx";
 import { useTsp } from "@typespec/emitter-framework";
 import { ScalarComponent } from "./ScalarComponent.jsx";
 import { UnionComponent } from "./UnionComponent.jsx";
 import { EnumComponent } from "./EnumComponent.jsx";
+import { LiteralDescriptor, TypeDescriptor } from "../parameter-descriptor.js";
 
 export interface TypeProps {
-  type: Type;
+  type: TypeDescriptor;
 }
 
 export function TypeComponent({ type }: TypeProps) {
-  const { $ } = useTsp();
   return (
     <Switch>
       <Match when={$.model.is(type)}>
@@ -46,8 +46,7 @@ export interface LiteralProps {
   literal: LiteralType;
 }
 
-export function LiteralComponent({ literal }: LiteralProps) {
-  const { $ } = useTsp();
+export function LiteralComponent({ literal }: LiteralDescriptor) {
   return (
     <>
       <Switch>

@@ -1,7 +1,8 @@
-import { Children, Indent, Show } from "@alloy-js/core";
+import { Block, Children, childrenArray, Show } from "@alloy-js/core";
 import { Documentation } from "./Documentation.jsx";
 import { Name } from "./Name.jsx";
 import { ModelReference } from "./ModelReference.jsx";
+import { TypeParameterDescriptor } from "../parameter-descriptor.js";
 
 export interface ModelProps {
   doc: string;
@@ -9,10 +10,14 @@ export interface ModelProps {
   baseModel?: string;
   decorators?: Children;
   children?: Children;
+  typeParameters?: TypeParameterDescriptor[];
 }
 
-export function ModelComponent(props: ModelProps) {
-  const { doc, name, baseModel, decorators, children } = props;
+export function Model(props: ModelProps) {
+  const { doc, name, baseModel, } = props;
+
+  const decorators = childrenArray(() => props.decorators);
+  const children = childrenArray(() => props.children);
 
   return (
     <>
@@ -20,19 +25,16 @@ export function ModelComponent(props: ModelProps) {
         <Documentation doc={doc!} />
         <hbr />
       </Show>
-      {{ decorators }}
+      { decorators }
       <Show when={Boolean(name)}>
         model <Name name={name!} />
       </Show>
       <Show when={Boolean(baseModel)}>
         <>extends <ModelReference model={baseModel!} /></>
       </Show>
-      {" {"}
-      <Indent>
+      <Block>
         {children}
-      </Indent>
-      <hbr />
-      {"}"}
+      </Block>
     </>
   );
 }
