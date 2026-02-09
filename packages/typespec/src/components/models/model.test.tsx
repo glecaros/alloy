@@ -22,7 +22,7 @@ it("Model 'is' another model", () => {
   expect(
     <Output>
       <SourceFile path="main.tsp">
-        <Model name="Cat" inherits={[InheritanceType.Is, "Animal"]}/>
+        <Model name="Cat" inherits={[InheritanceType.Is, "Animal"]} />
       </SourceFile>
     </Output>,
   ).toRenderTo({
@@ -32,17 +32,37 @@ it("Model 'is' another model", () => {
   });
 });
 
-
 it("Model 'extends' another model", () => {
   expect(
     <Output>
       <SourceFile path="main.tsp">
-        <Model name="Cat" inherits={[InheritanceType.Extends, "Animal"]}/>
+        <Model name="Cat" inherits={[InheritanceType.Extends, "Animal"]} />
       </SourceFile>
     </Output>,
   ).toRenderTo({
     "main.tsp": d`
     model Cat extends Animal{}
+        `,
+  });
+});
+
+it("Model 'extends' another model and 'spreads' another one", () => {
+  expect(
+    <Output>
+      <SourceFile path="main.tsp">
+        <Model
+          name="Cat"
+          inherits={[InheritanceType.Extends, "Animal"]}
+          spreads={Array.of("Feline")}
+        />
+      </SourceFile>
+    </Output>,
+  ).toRenderTo({
+    "main.tsp": d`
+    model Cat extends Animal{
+    
+        ...Feline;
+    }
         `,
   });
 });
