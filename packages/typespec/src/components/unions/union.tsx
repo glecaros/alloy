@@ -1,7 +1,9 @@
-import { Block, For, Show } from "@alloy-js/core";
+import { Block, Child, For, Show } from "@alloy-js/core";
+import { ValueOrArray } from "../../util.js";
 
 export interface UnionProps {
-  variants: Map<string, string>; // empty unions are not supported
+  variants: Map<string, string | Child>; // empty unions are not supported
+	typeParameters?: ValueOrArray<Child>;  // TODO support correctly
   expandable?: boolean;
   name: string;
 }
@@ -20,9 +22,9 @@ export function Union(props: UnionProps) {
           <hbr />
         </Show>
         <For each={props.variants.entries()} comma hardline enderPunctuation>
-          {([key, value]) => (
+          {([name, value]) => (
             <>
-              {key}: {value}
+              {name}: {value}
             </>
           )}
         </For>
