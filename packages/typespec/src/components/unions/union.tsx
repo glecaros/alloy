@@ -6,6 +6,8 @@ export interface UnionProps {
   name: string;
 }
 
+// TODO this is a Named union, we also need to implement support for 
+// union expressions, namely: `alias UnionExpression = Type1 | Type2 | ...; 
 export function Union(props: UnionProps) {
   // TODO figure out the right way to assert this
   // assert(props.variants.size > 0, "Unions must have at least one variant");
