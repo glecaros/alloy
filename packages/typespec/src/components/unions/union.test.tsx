@@ -8,7 +8,15 @@ it("renders namespaces when a file level namespace is present", () => {
   expect(
     <Output>
       <SourceFile path="main.tsp">
-        <Union name="Animals" variants={new Map([["dog", '"dog"'], ["cat", '"cat"']])} />
+        <Union
+          name="Animals"
+          variants={
+            new Map([
+              ["dog", '"dog"'],
+              ["cat", '"cat"'],
+            ])
+          }
+        />
       </SourceFile>
     </Output>,
   ).toRenderTo({
