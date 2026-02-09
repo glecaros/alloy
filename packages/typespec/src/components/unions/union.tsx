@@ -1,9 +1,8 @@
-import { Block, For } from "@alloy-js/core";
-import { useNamespaceContext } from "../../contexts/namespace.js";
-import { NamespaceSymbol } from "../../symbols/namespace.js";
+import { Block, For, Show } from "@alloy-js/core";
 
 export interface UnionProps {
   variants: Map<string, string>; // empty unions are not supported
+  expandable?: boolean;
   name: string;
 }
 
@@ -14,7 +13,11 @@ export function Union(props: UnionProps) {
     <>
       union {props.name}{" "}
       <Block>
-        <For each={props.variants.entries()} comma hardline>
+        <Show when={props.expandable}>
+          string,
+          <hbr />
+        </Show>
+        <For each={props.variants.entries()} comma hardline enderPunctuation>
           {([key, value]) => (
             <>
               {key}: {value}
