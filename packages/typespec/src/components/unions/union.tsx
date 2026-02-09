@@ -3,13 +3,13 @@ import { ValueOrArray } from "../../util.js";
 
 export interface UnionProps {
   variants: Map<string, string | Child>; // empty unions are not supported
-	typeParameters?: ValueOrArray<Child>;  // TODO support correctly
+  typeParameters?: ValueOrArray<Child>; // TODO support correctly
   expandable?: boolean;
   name: string;
 }
 
-// TODO this is a Named union, we also need to implement support for 
-// union expressions, namely: `alias UnionExpression = Type1 | Type2 | ...; 
+// TODO this is a Named union, we also need to implement support for
+// union expressions, namely: `alias UnionExpression = Type1 | Type2 | ...;
 export function Union(props: UnionProps) {
   // TODO figure out the right way to assert this
   // assert(props.variants.size > 0, "Unions must have at least one variant");
