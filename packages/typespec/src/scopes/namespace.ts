@@ -22,7 +22,9 @@ export class NamespaceScope extends OutputScope {
   }
 }
 
-export function useNamespace(): Optional<NamespaceScope> {
+// TODO: had to change the return type to `NamespaceScope | undefined` to avoid exporting `Optional`
+// as part of the library surface.
+export function useNamespace(): NamespaceScope | undefined {
   let scope: Optional<OutputScope> = useScope();
   while (scope !== undefined) {
     if (scope instanceof NamespaceScope) {
