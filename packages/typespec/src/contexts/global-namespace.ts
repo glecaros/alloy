@@ -1,36 +1,35 @@
 import { Binder, useBinder } from "@alloy-js/core";
-import { NamespaceSymbol } from "../index.js";
+import { ProgramScope } from "../scopes/program.js";
+import { SourceFileScope } from "../scopes/source-file.js";
+import { NamespaceSymbol } from "../symbols/index.js";
 
-const globalNamespaces = new WeakMap<Binder, NamespaceSymbol>();
-let defaultGlobalNamespace = new NamespaceSymbol("global", undefined, {
-  isGlobal: true,
-});
+export function createGlobalNamespace(parent: SourceFileScope | ProgramScope) {
+  return new NamespaceSymbol("global", undefined, { isGlobal: true });
+}
 
-export function useGlobalNamespace() {
+const programs = new WeakMap<Binder, ProgramScope>();
+let defaultProgram = new ProgramScope();
+
+export function useProgram() {
   const binder = useBinder();
-  return getGlobalNamespace(binder);
+  return getProgram(binder);
 }
 
-export function resetGlobalNamespace() {
-  defaultGlobalNamespace = new NamespaceSymbol("global", undefined, {
-    isGlobal: true,
-  });
+export function resetProgram() {
+  defaultProgram = new ProgramScope();
 }
 
-export function getGlobalNamespace(binder: Binder | undefined) {
+export function getProgram(binder: Binder | undefined) {
   if (!binder) {
-    return defaultGlobalNamespace;
+    return defaultProgram;
   }
 
-  let namespace = globalNamespaces.get(binder);
+  let program = programs.get(binder);
 
-  if (!namespace) {
-    namespace = new NamespaceSymbol("global", undefined, {
-      binder,
-      isGlobal: true,
-    });
-    globalNamespaces.set(binder, namespace);
+  if (!program) {
+    program = new ProgramScope({ binder });
+    programs.set(binder, program);
   }
 
-  return namespace;
+  return program;
 }

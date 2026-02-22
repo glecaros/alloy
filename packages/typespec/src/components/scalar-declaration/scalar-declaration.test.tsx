@@ -1,14 +1,14 @@
 import { Output, StatementList } from "@alloy-js/core";
 import { d, renderToString } from "@alloy-js/core/testing";
-import { beforeEach, expect, it } from "vitest";
-import { resetGlobalNamespace } from "../../contexts/index.js";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { resetProgram } from "../../contexts/global-namespace.js";
 import { createTypeSpecNamePolicy } from "../../name-policy.js";
 import { Namespace } from "../namespace/namespace.jsx";
 import { SourceFile } from "../source-file/source-file.jsx";
 import { ScalarDeclaration } from "./scalar-declaration.jsx";
 
 beforeEach(() => {
-  resetGlobalNamespace();
+  resetProgram();
 });
 
 it("renders a scalar", () => {
@@ -54,6 +54,12 @@ it("renders a scalar with 'extends'", () => {
 });
 
 it("throws if both 'is' and 'extends' are provided", () => {
+  const consoleMock = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  afterEach(() => {
+    consoleMock.mockReset();
+  });
+
   expect(() =>
     renderToString(
       <Output namePolicy={createTypeSpecNamePolicy()}>
@@ -99,6 +105,7 @@ it("does not deconflict names across namespaces", () => {
       namespace A {
         scalar Foo
       }
+
       namespace B {
         scalar Foo
       }`,
@@ -119,9 +126,9 @@ it("deconflicts duplicate names within the same namespace", () => {
     </Output>,
   ).toRenderTo({
     "main.tsp": d`
-      namespace A {
-        scalar Foo;
-        scalar Foo_2;
-      }`,
+      namespace A;
+
+      scalar Foo;
+      scalar Foo_2;`,
   });
 });

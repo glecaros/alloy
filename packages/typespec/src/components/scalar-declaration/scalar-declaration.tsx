@@ -1,12 +1,12 @@
-import { Child, Declaration, Name, Namekey, Refkey } from "@alloy-js/core";
+import { Children, Declaration, Name, Namekey, Refkey } from "@alloy-js/core";
 import { useTypeSpecNamePolicy } from "../../name-policy.js";
 import { createNamedTypeSymbol } from "../../symbols/factories.js";
 
 export interface ScalarDeclarationProps {
   name: string | Namekey;
   refkey?: Refkey;
-  is?: Child;
-  extends?: Child;
+  is?: Children;
+  extends?: Children;
 }
 
 export function ScalarDeclaration(props: ScalarDeclarationProps) {
