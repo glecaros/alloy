@@ -57,7 +57,7 @@ function validateRender(
     const expected = dedent(expectedRaw);
     let actualStr;
     if (typeof actual === "string") {
-      actualStr = dedent(actual);
+      actualStr = actual;
     } else if (Object.keys(actual).length === 1) {
       // If we have a single file, we can use its content directly.
       actualStr = Object.values(actual)[0];
@@ -90,7 +90,7 @@ function validateRender(
       Object.entries(actual).every(([key, value]) => {
         return isAsymmetricMatcher(dedentExpected[key]) ?
             dedentExpected[key].asymmetricMatch(value)
-          : dedentExpected[key] === dedent(value);
+          : dedentExpected[key] === value;
       });
     return {
       pass,

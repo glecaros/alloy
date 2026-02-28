@@ -42,7 +42,6 @@ export function Namespace(props: NamespaceProps) {
           <Match else>
             {" "}
             <Block>{props.children}</Block>
-            <hbr />
           </Match>
         </Switch>
       </NamespaceScopeComponent>

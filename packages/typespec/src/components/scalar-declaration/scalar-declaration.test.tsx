@@ -95,7 +95,7 @@ it("does not deconflict names across namespaces", () => {
         <Namespace name="A">
           <ScalarDeclaration name="Foo" />
         </Namespace>
-        <hbr />
+        <hbr /><hbr />
         <Namespace name="B">
           <ScalarDeclaration name="Foo" />
         </Namespace>

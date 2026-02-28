@@ -40,6 +40,7 @@ it("does not declare a file level namespace when more than one top-level namespa
     <Output>
       <SourceFile path="main.tsp">
         <Namespace name="My.Namespace1">Content of the file</Namespace>
+        <hbr />
         <Namespace name="My.Namespace2">More content of the file</Namespace>
       </SourceFile>
     </Output>,
