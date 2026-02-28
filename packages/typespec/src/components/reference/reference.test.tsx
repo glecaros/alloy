@@ -4,7 +4,7 @@ import { SourceFile } from "#components/source-file/source-file.jsx";
 import { Output, refkey, SourceDirectory } from "@alloy-js/core";
 import { d } from "@alloy-js/core/testing";
 import { beforeEach, expect, it } from "vitest";
-import { resetProgram } from "../../contexts/global-namespace.js";
+import { resetProgram } from "../../contexts/program.js";
 import { createTypeSpecNamePolicy } from "../../name-policy.js";
 import { Reference } from "./reference.jsx";
 

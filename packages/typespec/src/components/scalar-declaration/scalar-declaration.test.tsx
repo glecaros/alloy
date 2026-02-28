@@ -1,7 +1,7 @@
 import { Output, StatementList } from "@alloy-js/core";
 import { d, renderToString } from "@alloy-js/core/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { resetProgram } from "../../contexts/global-namespace.js";
+import { resetProgram } from "../../contexts/program.js";
 import { createTypeSpecNamePolicy } from "../../name-policy.js";
 import { Namespace } from "../namespace/namespace.jsx";
 import { SourceFile } from "../source-file/source-file.jsx";

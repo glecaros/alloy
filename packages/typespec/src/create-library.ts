@@ -7,7 +7,7 @@ import {
   TO_SYMBOL,
   useBinder,
 } from "@alloy-js/core";
-import { getProgram } from "./contexts/global-namespace.js";
+import { getProgram } from "./contexts/program.js";
 import { ProgramScope } from "./scopes/program.js";
 import {
   isNamespaceSymbol,

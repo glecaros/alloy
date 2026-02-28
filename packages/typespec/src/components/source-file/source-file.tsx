@@ -16,7 +16,7 @@ import {
 import {
   createGlobalNamespace,
   useProgram,
-} from "../../contexts/global-namespace.js";
+} from "../../contexts/program.js";
 import { SourceFileScope } from "../../scopes/source-file.js";
 import { joinPath } from "../../util.js";
 import { NamespaceScopeComponent } from "../namespace/namespace-scope.jsx";
