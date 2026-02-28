@@ -7,6 +7,7 @@ import {
 } from "@alloy-js/core";
 import { useNamespaceContext } from "../contexts/namespace.js";
 import { TypeSpecElements, useTypeSpecNamePolicy } from "../name-policy.js";
+import { NamedTypeScope } from "../scopes/named-type.js";
 import { SourceFileScope } from "../scopes/index.js";
 import { ValueOrArray } from "../util.js";
 import { NamedTypeKind, NamedTypeSymbol, TypeSpecSymbol } from "./index.js";
@@ -79,6 +80,26 @@ export function createNamedTypeSymbol(
   const parentSymbol = scope?.symbol;
   return withCleanup(
     new NamedTypeSymbol(name, parentSymbol.memberSpaces, kind, options),
+  );
+}
+
+export function createTemplateParameterSymbol(
+  name: string | Namekey,
+  options: OutputSymbolOptions = {},
+) {
+  const scope = useScope();
+  if (!(scope instanceof NamedTypeScope)) {
+    throw new Error(
+      "Can't create a template parameter symbol outside of a named type scope.",
+    );
+  }
+
+  return withCleanup(
+    new TypeSpecSymbol(
+      name,
+      scope.templateParameters,
+      withNamePolicy(options, "template"),
+    ),
   );
 }
 

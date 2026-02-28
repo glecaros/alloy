@@ -1,9 +1,10 @@
-import { Output, StatementList } from "@alloy-js/core";
+import { Output, refkey, StatementList } from "@alloy-js/core";
 import { d, renderToString } from "@alloy-js/core/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { resetProgram } from "../../contexts/program.js";
 import { createTypeSpecNamePolicy } from "../../name-policy.js";
 import { Namespace } from "../namespace/namespace.jsx";
+import { Reference } from "../reference/reference.jsx";
 import { SourceFile } from "../source-file/source-file.jsx";
 import { ScalarDeclaration } from "./scalar-declaration.jsx";
 
@@ -169,5 +170,47 @@ it("renders a scalar with constrained template parameters", () => {
       namespace A;
 
       scalar Unreal<Type extends string>`,
+  });
+});
+
+it("resolves template parameter references within the scalar", () => {
+  const typeKey = refkey();
+  expect(
+    <Output namePolicy={createTypeSpecNamePolicy()}>
+      <SourceFile path="main.tsp">
+        <Namespace name="A">
+          <ScalarDeclaration
+            name="Wrapped"
+            templateParameters={[{ name: "T", refkey: typeKey }]}
+            extends={<Reference refkey={typeKey} />}
+          />
+        </Namespace>
+      </SourceFile>
+    </Output>,
+  ).toRenderTo({
+    "main.tsp": d`
+      namespace A;
+
+      scalar Wrapped<T> extends T`,
+  });
+});
+
+it("does not resolve template parameter references outside the scalar", () => {
+  const typeKey = refkey();
+  expect(
+    <Output namePolicy={createTypeSpecNamePolicy()}>
+      <SourceFile path="main.tsp">
+        <Namespace name="A">
+          <ScalarDeclaration
+            name="Wrapped"
+            templateParameters={[{ name: "T", refkey: typeKey }]}
+          />
+          <hbr />
+          <Reference refkey={typeKey} />
+        </Namespace>
+      </SourceFile>
+    </Output>,
+  ).toRenderTo({
+    "main.tsp": expect.stringContaining("Unresolved Symbol"),
   });
 });

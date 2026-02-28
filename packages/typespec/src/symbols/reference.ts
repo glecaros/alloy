@@ -1,4 +1,4 @@
-import { memo, OutputSymbol, Refkey, resolve } from "@alloy-js/core";
+import { memo, OutputScope, OutputSymbol, Refkey, resolve } from "@alloy-js/core";
 import { NamespaceSymbol } from "../index.js";
 import { NamedTypeScope } from "../scopes/named-type.js";
 import { ProgramScope } from "../scopes/program.js";
@@ -19,6 +19,11 @@ export function ref(refkey: Refkey): () => Optional<OutputSymbol> {
     const result = resolveResult.value;
     const { commonScope, pathUp, pathDown, memberPath, lexicalDeclaration } =
       result;
+
+    if (!validateSymbolReachable(pathDown)) {
+      return undefined;
+    }
+
     if (commonScope instanceof ProgramScope) {
       const originFileScope = pathUp.find((s) => s instanceof SourceFileScope);
       const originPath = originFileScope?.name;
@@ -38,4 +43,13 @@ export function ref(refkey: Refkey): () => Optional<OutputSymbol> {
 
     return result.symbol;
   });
+}
+
+/**
+ * Checks whether a symbol is reachable from the current scope by inspecting
+ * the path down to the target. Symbols inside a NamedTypeScope (e.g. template
+ * parameters) are not reachable from outside that scope.
+ */
+function validateSymbolReachable(pathDown: OutputScope[]): boolean {
+  return !pathDown.some((s) => s instanceof NamedTypeScope);
 }

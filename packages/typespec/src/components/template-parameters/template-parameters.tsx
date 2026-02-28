@@ -1,9 +1,19 @@
-import { Children, For, Indent } from "@alloy-js/core";
+import {
+  Children,
+  Declaration,
+  For,
+  Indent,
+  Name,
+  Namekey,
+  Refkey,
+} from "@alloy-js/core";
+import { createTemplateParameterSymbol } from "../../symbols/factories.js";
 
 export interface TemplateParameterDescriptor {
-  name: string;
+  name: string | Namekey;
   extends?: Children;
   default?: Children;
+  refkey?: Refkey;
 }
 
 export interface TemplateParametersProps {
@@ -19,18 +29,26 @@ export function TemplateParameters(props: TemplateParametersProps) {
       <group>
         <Indent softline>
           <For each={parameters} comma line>
-            {(param) => (
-              <>
-                {param.name}
-                {param.extends && <> extends {param.extends}</>}
-                {param.default && <> = {param.default}</>}
-              </>
-            )}
+            {(param) => <TemplateParameter {...param} />}
           </For>
         </Indent>
       </group>
       {">"}
     </>
+  );
+}
+
+function TemplateParameter(props: TemplateParameterDescriptor) {
+  const sym = createTemplateParameterSymbol(props.name, {
+    refkeys: props.refkey,
+  });
+
+  return (
+    <Declaration symbol={sym}>
+      <Name />
+      {props.extends && <> extends {props.extends}</>}
+      {props.default && <> = {props.default}</>}
+    </Declaration>
   );
 }
 

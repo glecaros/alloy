@@ -6,8 +6,12 @@ import {
   Name,
   Namekey,
   Refkey,
+  Scope,
+  useScope,
 } from "@alloy-js/core";
 import { useTypeSpecNamePolicy } from "../../name-policy.js";
+import { NamedTypeScope } from "../../scopes/named-type.js";
+import { NamespaceScope } from "../../scopes/namespace.js";
 import { createNamedTypeSymbol } from "../../symbols/factories.js";
 import {
   TemplateParameterDescriptor,
@@ -41,18 +45,23 @@ export function OperationDeclaration(props: OperationDeclarationProps) {
     namePolicy: useTypeSpecNamePolicy().for("operation"),
   });
 
+  const parentScope = useScope() as NamespaceScope;
+  const namedTypeScope = new NamedTypeScope(sym, parentScope);
+
   return (
     <Declaration symbol={sym}>
-      op <Name />
-      {props.templateParameters && (
-        <TemplateParameters parameters={props.templateParameters} />
-      )}
-      {props.is && <> is {props.is}</>}
-      {!props.is && (
-        <>
-          <Parameters parameters={props.parameters} />: {props.returnType ?? "void"}
-        </>
-      )}
+      <Scope value={namedTypeScope}>
+        op <Name />
+        {props.templateParameters && (
+          <TemplateParameters parameters={props.templateParameters} />
+        )}
+        {props.is && <> is {props.is}</>}
+        {!props.is && (
+          <>
+            <Parameters parameters={props.parameters} />: {props.returnType ?? "void"}
+          </>
+        )}
+      </Scope>
     </Declaration>
   );
 }

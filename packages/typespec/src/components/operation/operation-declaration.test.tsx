@@ -1,9 +1,10 @@
-import { Output, StatementList } from "@alloy-js/core";
+import { Output, refkey, StatementList } from "@alloy-js/core";
 import { d, renderToString } from "@alloy-js/core/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { resetProgram } from "../../contexts/program.js";
 import { createTypeSpecNamePolicy } from "../../name-policy.js";
 import { Namespace } from "../namespace/namespace.jsx";
+import { Reference } from "../reference/reference.jsx";
 import { SourceFile } from "../source-file/source-file.jsx";
 import { OperationDeclaration } from "./operation-declaration.jsx";
 
@@ -218,5 +219,50 @@ it("renders an operation with constrained template parameters", () => {
       namespace A;
 
       op ReadResource<T extends BaseModel = DefaultModel>(id: string): T`,
+  });
+});
+
+it("resolves template parameter references within the operation", () => {
+  const tKey = refkey();
+  expect(
+    <Output namePolicy={createTypeSpecNamePolicy()}>
+      <SourceFile path="main.tsp">
+        <Namespace name="A">
+          <OperationDeclaration
+            name="ReadResource"
+            templateParameters={[{ name: "T", refkey: tKey }]}
+            parameters={[{ name: "id", type: "string" }]}
+            returnType={<Reference refkey={tKey} />}
+          />
+        </Namespace>
+      </SourceFile>
+    </Output>,
+  ).toRenderTo({
+    "main.tsp": d`
+      namespace A;
+
+      op ReadResource<T>(id: string): T`,
+  });
+});
+
+it("does not resolve template parameter references outside the operation", () => {
+  const tKey = refkey();
+  expect(
+    <Output namePolicy={createTypeSpecNamePolicy()}>
+      <SourceFile path="main.tsp">
+        <Namespace name="A">
+          <OperationDeclaration
+            name="ReadResource"
+            templateParameters={[{ name: "T", refkey: tKey }]}
+            parameters={[{ name: "id", type: "string" }]}
+            returnType="T"
+          />
+          <hbr />
+          <Reference refkey={tKey} />
+        </Namespace>
+      </SourceFile>
+    </Output>,
+  ).toRenderTo({
+    "main.tsp": expect.stringContaining("Unresolved Symbol"),
   });
 });
