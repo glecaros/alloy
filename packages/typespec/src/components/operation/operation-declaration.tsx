@@ -58,7 +58,8 @@ export function OperationDeclaration(props: OperationDeclarationProps) {
         {props.is && <> is {props.is}</>}
         {!props.is && (
           <>
-            <Parameters parameters={props.parameters} />: {props.returnType ?? "void"}
+            <Parameters parameters={props.parameters} />:{" "}
+            {props.returnType ?? "void"}
           </>
         )}
       </Scope>
@@ -76,7 +77,8 @@ function Parameters(props: { parameters?: ParameterDescriptor[] }) {
             {(param) => (
               <>
                 <softline />
-                {param.name}{param.optional ? "?" : ""}: {param.type}
+                {param.name}
+                {param.optional ? "?" : ""}: {param.type}
               </>
             )}
           </For>

@@ -95,7 +95,8 @@ it("does not deconflict names across namespaces", () => {
         <Namespace name="A">
           <ScalarDeclaration name="Foo" />
         </Namespace>
-        <hbr /><hbr />
+        <hbr />
+        <hbr />
         <Namespace name="B">
           <ScalarDeclaration name="Foo" />
         </Namespace>
@@ -158,9 +159,7 @@ it("renders a scalar with constrained template parameters", () => {
         <Namespace name="A">
           <ScalarDeclaration
             name="Unreal"
-            templateParameters={[
-              { name: "Type", extends: "string" },
-            ]}
+            templateParameters={[{ name: "Type", extends: "string" }]}
           />
         </Namespace>
       </SourceFile>

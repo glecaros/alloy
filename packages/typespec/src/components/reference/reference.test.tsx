@@ -68,7 +68,8 @@ it("properly resolves types in the same file and different namespace", () => {
         <Namespace name="A">
           <ScalarDeclaration name="Bar" refkey={barRefkey} />
         </Namespace>
-        <hbr /><hbr />
+        <hbr />
+        <hbr />
         <Namespace name="B">
           <Reference refkey={barRefkey} />
         </Namespace>

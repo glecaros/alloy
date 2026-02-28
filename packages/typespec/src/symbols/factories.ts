@@ -7,8 +7,8 @@ import {
 } from "@alloy-js/core";
 import { useNamespaceContext } from "../contexts/namespace.js";
 import { TypeSpecElements, useTypeSpecNamePolicy } from "../name-policy.js";
-import { NamedTypeScope } from "../scopes/named-type.js";
 import { SourceFileScope } from "../scopes/index.js";
+import { NamedTypeScope } from "../scopes/named-type.js";
 import { ValueOrArray } from "../util.js";
 import { NamedTypeKind, NamedTypeSymbol, TypeSpecSymbol } from "./index.js";
 import { NamespaceSymbol, NamespaceSymbolOptions } from "./namespace.js";

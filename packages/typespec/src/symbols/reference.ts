@@ -1,4 +1,10 @@
-import { memo, OutputScope, OutputSymbol, Refkey, resolve } from "@alloy-js/core";
+import {
+  memo,
+  OutputScope,
+  OutputSymbol,
+  Refkey,
+  resolve,
+} from "@alloy-js/core";
 import { NamespaceSymbol } from "../index.js";
 import { NamedTypeScope } from "../scopes/named-type.js";
 import { ProgramScope } from "../scopes/program.js";

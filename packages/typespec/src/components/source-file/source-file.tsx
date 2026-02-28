@@ -13,10 +13,7 @@ import {
   Switch,
   useContext,
 } from "@alloy-js/core";
-import {
-  createGlobalNamespace,
-  useProgram,
-} from "../../contexts/program.js";
+import { createGlobalNamespace, useProgram } from "../../contexts/program.js";
 import { SourceFileScope } from "../../scopes/source-file.js";
 import { joinPath } from "../../util.js";
 import { NamespaceScopeComponent } from "../namespace/namespace-scope.jsx";
