@@ -132,3 +132,42 @@ it("deconflicts duplicate names within the same namespace", () => {
       scalar Foo_2;`,
   });
 });
+
+it("renders a scalar with template parameters", () => {
+  expect(
+    <Output namePolicy={createTypeSpecNamePolicy()}>
+      <SourceFile path="main.tsp">
+        <Namespace name="A">
+          <ScalarDeclaration name="Unreal" templateParameters={["Type"]} />
+        </Namespace>
+      </SourceFile>
+    </Output>,
+  ).toRenderTo({
+    "main.tsp": d`
+      namespace A;
+
+      scalar Unreal<Type>`,
+  });
+});
+
+it("renders a scalar with constrained template parameters", () => {
+  expect(
+    <Output namePolicy={createTypeSpecNamePolicy()}>
+      <SourceFile path="main.tsp">
+        <Namespace name="A">
+          <ScalarDeclaration
+            name="Unreal"
+            templateParameters={[
+              { name: "Type", extends: "string" },
+            ]}
+          />
+        </Namespace>
+      </SourceFile>
+    </Output>,
+  ).toRenderTo({
+    "main.tsp": d`
+      namespace A;
+
+      scalar Unreal<Type extends string>`,
+  });
+});
