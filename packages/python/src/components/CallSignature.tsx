@@ -13,6 +13,15 @@ import {
 import { createPythonSymbol } from "../symbol-creation.js";
 import { PythonOutputSymbol } from "../symbols/index.js";
 import { Atom } from "./Atom.jsx";
+import { TypeRefContext } from "./TypeRefContext.jsx";
+
+export type ParameterMarker = "*" | "/";
+
+function isParameterMarker(
+  param: string | ParameterDescriptor | undefined,
+): param is ParameterMarker {
+  return typeof param === "string" && (param === "*" || param === "/");
+}
 
 export type ParameterMarker = "*" | "/";
 
@@ -75,7 +84,10 @@ function parameter(param: DeclaredParameterDescriptor) {
     <group>
       {param.symbol.name}
       <Show when={!!param.type}>
-        : <TypeSlot>{param.type}</TypeSlot>
+        :{" "}
+        <TypeRefContext>
+          <TypeSlot>{param.type}</TypeSlot>
+        </TypeRefContext>
       </Show>
       <Show when={param.default !== undefined}>
         <Show when={!param.type}>=</Show>
@@ -184,7 +196,7 @@ export function CallSignature(props: CallSignatureProps) {
     props.returnType ?
       <>
         {" -> "}
-        {props.returnType}
+        <TypeRefContext>{props.returnType}</TypeRefContext>
       </>
     : undefined;
 

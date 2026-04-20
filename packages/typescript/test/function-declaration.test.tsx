@@ -388,6 +388,76 @@ describe("symbols", () => {
       }
     `);
   });
+
+  it("adds symbols for members of parameters when a type and default are provided", () => {
+    const ifaceRk = refkey();
+    const ifaceMemberRk = refkey();
+    const paramRk = refkey();
+
+    const param: ParameterDescriptor = {
+      name: "myParam",
+      refkey: paramRk,
+      type: ifaceRk,
+      default: "undefined",
+    };
+
+    const decl = (
+      <List doubleHardline>
+        <InterfaceDeclaration name="IFace" refkey={ifaceRk}>
+          <InterfaceMember name="myProp" refkey={ifaceMemberRk}>
+            string
+          </InterfaceMember>
+        </InterfaceDeclaration>
+        <FunctionDeclaration name="fn" parameters={[param]}>
+          {memberRefkey(paramRk, ifaceMemberRk)}
+        </FunctionDeclaration>
+      </List>
+    );
+
+    expect(toSourceText(decl)).toBe(d`
+      interface IFace {
+        myProp: string
+      }
+
+      function fn(myParam: IFace = undefined) {
+        myParam.myProp
+      }
+    `);
+  });
+});
+
+it("has parameters and return type in type ref context", () => {
+  const i1 = namekey("iface1");
+  const i2 = namekey("iface2");
+  const template = (
+    <Output>
+      <SourceFile path="test1.ts">
+        <TypeDeclaration name={i1}>any</TypeDeclaration>
+        <hbr />
+        <TypeDeclaration name={i2}>any</TypeDeclaration>
+      </SourceFile>
+
+      <SourceFile path="test2.ts">
+        <FunctionDeclaration
+          name="foo"
+          parameters={[{ name: "a", type: i1 }]}
+          returnType={i2}
+        />
+      </SourceFile>
+    </Output>
+  );
+
+  expect(template).toRenderTo({
+    "test1.ts": `
+      type iface1 = any;
+      type iface2 = any;
+    `,
+    "test2.ts": `
+      import type { iface1, iface2 } from "./test1.js";
+
+      function foo(a: iface1): iface2 {}
+    `,
+  });
 });
 
 it("has parameters and return type in type ref context", () => {
